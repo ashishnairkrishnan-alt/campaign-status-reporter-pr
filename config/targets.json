@@ -1,0 +1,14 @@
+{
+  "chivas": {
+    "awareness": { "reach": 500000, "frequency": 3.0, "cpm": 20, "vtr": 0.30 },
+    "conversion": { "ctr": 0.02, "cpc": 5, "cpl": 80, "roas": 3.0 }
+  },
+  "absolut": {
+    "awareness": { "reach": 600000, "frequency": 2.8, "cpm": 18, "vtr": 0.32 },
+    "conversion": { "ctr": 0.025, "cpc": 4.5, "cpl": 70, "roas": 3.5 }
+  },
+  "jameson": {
+    "awareness": { "reach": 450000, "frequency": 3.2, "cpm": 22, "vtr": 0.28 },
+    "conversion": { "ctr": 0.022, "cpc": 4.8, "cpl": 75, "roas": 3.2 }
+  }
+}
