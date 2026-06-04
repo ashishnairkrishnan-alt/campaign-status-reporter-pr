@@ -115,12 +115,14 @@ export async function fetchAds(
     ? json
     : json.data ?? json.rows ?? [];
 
-  // Filter to this brand's account
-  const rows = accountName
-    ? allRows.filter(
-        (r) => (r.account_name ?? "").toLowerCase() === accountName.toLowerCase()
-      )
-    : allRows;
+  // Filter to this brand's account AND the selected date range
+  const rows = allRows.filter((r) => {
+    if (accountName && (r.account_name ?? "").toLowerCase() !== accountName.toLowerCase()) return false;
+    // Date filter — Windsor date format is YYYY-MM-DD, string comparison works
+    if (r.date && r.date < dateRange.start) return false;
+    if (r.date && r.date > dateRange.end)   return false;
+    return true;
+  });
 
   if (rows.length === 0) return [];
 
