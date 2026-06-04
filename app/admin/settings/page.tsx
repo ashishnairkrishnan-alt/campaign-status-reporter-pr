@@ -183,7 +183,7 @@ function WindsorTest() {
               )}
               {result.rowCount === 0 && (
                 <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                  ⚠️ Windsor connected but returned 0 rows. Make sure your Meta account is linked in the Windsor dashboard and the API key has access to account <strong>687576933271645</strong>.
+                  ⚠️ Windsor connected but returned 0 rows. Check that your Meta accounts are linked in the Windsor dashboard and the API key is correct in Vercel env vars.
                 </p>
               )}
             </div>

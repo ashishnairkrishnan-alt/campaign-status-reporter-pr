@@ -60,9 +60,16 @@ function buildDatePreset(dateRange: { start: string; end: string }): string {
   const days = Math.round(
     (new Date(dateRange.end).getTime() - new Date(dateRange.start).getTime()) / 86400000
   );
-  if (days <= 7) return "last_7d";
+  if (days <= 7)  return "last_7d";
   if (days <= 14) return "last_14d";
-  return "last_30d";
+  if (days <= 30) return "last_30d";
+  return "last_180d";
+}
+
+// Windsor data may lag behind — always fetch a wider window and filter client-side
+function widenPreset(preset: string): string {
+  // Always use at least last_180d so older data (e.g. Dec 2025 campaigns) is included
+  return "last_180d";
 }
 
 export async function fetchAds(
@@ -70,7 +77,7 @@ export async function fetchAds(
   dateRange: { start: string; end: string },
   apiKey: string
 ): Promise<AdData[]> {
-  const preset = buildDatePreset(dateRange);
+  const preset = widenPreset(buildDatePreset(dateRange)); // always fetch 180d window
 
   const url = new URL(WINDSOR_BASE);
   url.searchParams.set("api_key", apiKey);
