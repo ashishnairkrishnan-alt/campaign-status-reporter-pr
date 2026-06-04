@@ -27,6 +27,7 @@ const FIELDS = [
   "roas",
   "cost_per_result",
   "thumbnail_url",
+  "video_url",
 ].join(",");
 
 interface WindsorRow {
@@ -35,6 +36,7 @@ interface WindsorRow {
   campaign?: string;
   adset?: string;
   ad?: string;
+  video_url?: string;
   impressions?: string | number;
   reach?: string | number;
   frequency?: string | number;
@@ -162,6 +164,7 @@ export async function fetchAds(
       objective:    detectObjective(campaignName),
       metrics,
       thumbnailUrl: row.thumbnail_url || undefined,
+      videoUrl:     row.video_url     || undefined,
       dateRange,
     });
   }

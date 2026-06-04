@@ -125,6 +125,139 @@ function BrandSettingsCard({ brand }: { brand: typeof brands[number] }) {
   );
 }
 
+// ─── Dashboard view pre-selection per brand ──────────────────────────────────
+interface ViewFilter {
+  campaign: string;
+  adset: string;
+  dateFrom: string;
+  dateTo: string;
+}
+
+const EMPTY_FILTER: ViewFilter = { campaign: "", adset: "", dateFrom: "", dateTo: "" };
+const VIEW_KEY = (brandId: string) => `dashboard_view_${brandId}`;
+
+function DashboardViewCard({
+  brandId, brandLabel, brandColor,
+}: { brandId: string; brandLabel: string; brandColor: string }) {
+  const [filter, setFilter] = useState<ViewFilter>(EMPTY_FILTER);
+  const [saved, setSaved]   = useState(false);
+  const [campaigns, setCampaigns] = useState<string[]>([]);
+  const [adsets, setAdsets]       = useState<string[]>([]);
+  const [loading, setLoading]     = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(VIEW_KEY(brandId));
+      if (raw) setFilter(JSON.parse(raw));
+    } catch {}
+  }, [brandId]);
+
+  async function loadCampaigns() {
+    setLoading(true);
+    try {
+      const res  = await fetch(`/api/windsor?brand=${brandId}&dateRange=30d`);
+      const data = await res.json();
+      const camps = [...new Set<string>((data.allAds ?? []).map((a: { campaignName: string }) => a.campaignName))].sort();
+      setCampaigns(camps);
+    } catch {}
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    if (filter.campaign) {
+      // Update adsets when campaign changes
+      fetch(`/api/windsor?brand=${brandId}&dateRange=30d`)
+        .then((r) => r.json())
+        .then((data) => {
+          const ads = (data.allAds ?? []).filter((a: { campaignName: string }) => a.campaignName === filter.campaign);
+          setAdsets([...new Set<string>(ads.map((a: { adsetName: string }) => a.adsetName))].sort());
+        })
+        .catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter.campaign]);
+
+  function save() {
+    localStorage.setItem(VIEW_KEY(brandId), JSON.stringify(filter));
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  }
+
+  function clear() {
+    setFilter(EMPTY_FILTER);
+    localStorage.removeItem(VIEW_KEY(brandId));
+  }
+
+  const inputClass = "w-full bg-white border border-border rounded-lg px-3 py-2 text-sm text-ink focus:border-blue outline-none transition-colors";
+
+  return (
+    <div className="bg-white border border-border rounded-xl p-5 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: brandColor }} />
+          <h3 className="font-display text-base font-semibold text-ink">{brandLabel}</h3>
+        </div>
+        <button onClick={loadCampaigns} disabled={loading}
+          className="text-xs text-blue hover:text-blue-dark transition-colors">
+          {loading ? "Loading…" : "Load campaigns from Windsor"}
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Campaign */}
+          <div>
+            <label className="block text-xs text-subtle mb-1.5">Campaign (leave blank = show all)</label>
+            {campaigns.length > 0 ? (
+              <select value={filter.campaign} onChange={(e) => setFilter((f) => ({ ...f, campaign: e.target.value, adset: "" }))} className={inputClass}>
+                <option value="">All campaigns</option>
+                {campaigns.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            ) : (
+              <input value={filter.campaign} onChange={(e) => setFilter((f) => ({ ...f, campaign: e.target.value, adset: "" }))}
+                placeholder="Paste campaign name or load from Windsor ↑" className={inputClass} />
+            )}
+          </div>
+
+          {/* Adset */}
+          <div>
+            <label className="block text-xs text-subtle mb-1.5">Ad Set (leave blank = show all)</label>
+            {adsets.length > 0 ? (
+              <select value={filter.adset} onChange={(e) => setFilter((f) => ({ ...f, adset: e.target.value }))} className={inputClass}>
+                <option value="">All ad sets</option>
+                {adsets.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            ) : (
+              <input value={filter.adset} onChange={(e) => setFilter((f) => ({ ...f, adset: e.target.value }))}
+                placeholder="Paste ad set name or select campaign first" className={inputClass} />
+            )}
+          </div>
+        </div>
+
+        {/* Date range */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-subtle mb-1.5">Date from</label>
+            <input type="date" value={filter.dateFrom} onChange={(e) => setFilter((f) => ({ ...f, dateFrom: e.target.value }))} className={inputClass} />
+          </div>
+          <div>
+            <label className="block text-xs text-subtle mb-1.5">Date to</label>
+            <input type="date" value={filter.dateTo} onChange={(e) => setFilter((f) => ({ ...f, dateTo: e.target.value }))} className={inputClass} />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 pt-1">
+          <button onClick={save} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-all"
+            style={{ backgroundColor: brandColor }}>
+            {saved ? <><CheckCircle className="w-3.5 h-3.5" /> Saved</> : <><Save className="w-3.5 h-3.5" /> Apply to dashboard</>}
+          </button>
+          <button onClick={clear} className="text-xs text-subtle hover:text-ink transition-colors">Reset to all</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function WindsorTest() {
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(false);
@@ -249,9 +382,24 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
-        {/* Per-brand settings */}
+        {/* Dashboard view — pre-select campaign/adset/dates for stakeholders */}
         <section>
-          <h2 className="font-display text-lg font-semibold text-ink mb-4">Brand Settings</h2>
+          <div className="mb-4">
+            <h2 className="font-display text-lg font-semibold text-ink mb-1">Dashboard View</h2>
+            <p className="text-sm text-muted">Pre-select which campaign, ad set and date range stakeholders see by default. They can still change filters themselves.</p>
+          </div>
+          <div className="space-y-4">
+            {brands.map((brand) => (
+              <DashboardViewCard key={brand.id} brandId={brand.id} brandLabel={brand.label} brandColor={brand.color} />
+            ))}
+          </div>
+        </section>
+
+        <div className="border-t border-border" />
+
+        {/* Per-brand display settings */}
+        <section>
+          <h2 className="font-display text-lg font-semibold text-ink mb-4">Display Settings</h2>
           <div className="space-y-5">
             {brands.map((brand) => (
               <BrandSettingsCard key={brand.id} brand={brand} />

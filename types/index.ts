@@ -26,6 +26,7 @@ export interface AdData {
   objective: Objective;
   metrics: AdMetrics;
   thumbnailUrl?: string;
+  videoUrl?: string;
   dateRange: { start: string; end: string };
 }
 

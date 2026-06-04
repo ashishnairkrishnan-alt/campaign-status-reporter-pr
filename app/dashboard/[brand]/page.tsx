@@ -20,7 +20,7 @@ import { aggregateMetrics } from "@/lib/metrics";
 
 const targets = targetsJson as Targets;
 
-// Read admin settings from localStorage (set via /admin/settings)
+// Read admin display settings from localStorage
 function useAdminSettings(brandId: string, defaults: { campaignLabel: string; currency: string; lastUpdated: string }) {
   const [settings, setSettings] = useState(defaults);
   useEffect(() => {
@@ -32,6 +32,21 @@ function useAdminSettings(brandId: string, defaults: { campaignLabel: string; cu
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brandId]);
   return settings;
+}
+
+// Read admin pre-selected campaign/adset/date filter
+function useAdminViewFilter(brandId: string) {
+  const [viewFilter, setViewFilter] = useState<{ campaign: string; adset: string; dateFrom: string; dateTo: string } | null>(null);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(`dashboard_view_${brandId}`);
+      if (raw) {
+        const f = JSON.parse(raw);
+        if (f.campaign || f.adset || f.dateFrom) setViewFilter(f);
+      }
+    } catch {}
+  }, [brandId]);
+  return viewFilter;
 }
 
 function SkeletonKPI() {
@@ -77,11 +92,12 @@ export default function DashboardPage() {
   const [dateRange, setDateRange] = useState<DateRangePreset>("30d");
   const [filter, setFilter] = useState<FilterState>(DEFAULT_FILTER);
 
-  const adminSettings = useAdminSettings(brandId, {
+  const adminSettings  = useAdminSettings(brandId, {
     campaignLabel: brand?.campaignLabel ?? "",
     currency:      brand?.currency ?? "$",
     lastUpdated:   LAST_UPDATED,
   });
+  const adminViewFilter = useAdminViewFilter(brandId);
 
   const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: ["dashboard", brandId, dateRange],
@@ -92,7 +108,15 @@ export default function DashboardPage() {
   const brandColor = brand?.color ?? "#002957";
   const brandLabel = brand?.label ?? brandId;
 
-  const filteredAds  = data ? applyFilter(data.allAds, filter) : [];
+  // Apply admin pre-selection on top of user filter
+  const baseAds = data ? (() => {
+    let ads = data.allAds;
+    if (adminViewFilter?.campaign) ads = ads.filter((a) => a.campaignName === adminViewFilter.campaign);
+    if (adminViewFilter?.adset)    ads = ads.filter((a) => a.adsetName    === adminViewFilter.adset);
+    return ads;
+  })() : [];
+
+  const filteredAds    = applyFilter(baseAds, filter);
   const filteredTotals = aggregateMetrics(filteredAds);
 
   const dominantObjective = (() => {

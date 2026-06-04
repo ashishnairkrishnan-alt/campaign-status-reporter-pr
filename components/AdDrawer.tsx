@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Sparkles, RefreshCw, Play } from "lucide-react";
-import Image from "next/image";
+import { X, Sparkles, RefreshCw } from "lucide-react";
 import type { AdData } from "@/types";
 import { formatMetric } from "@/lib/metrics";
 import { getBadge } from "@/lib/badges";
 import { ChannelIcon } from "./ChannelIcon";
+import { MobilePreview } from "./MobilePreview";
 
 const lightBadgeStyles: Record<string, string> = {
   scaling:           "bg-amber-50  text-amber-700  border border-amber-200",
@@ -78,9 +78,8 @@ export function AdDrawer({ ad, currency = "$", onClose }: AdDrawerProps) {
 
   if (!ad) return null;
 
-  const badge    = getBadge(ad);
-  const hasVideo = ad.metrics.videoViews !== undefined;
-  const fm       = (v: number | undefined, t: string) => formatMetric(v, t, currency);
+  const badge = getBadge(ad);
+  const fm    = (v: number | undefined, t: string) => formatMetric(v, t, currency);
 
   return (
     <>
@@ -108,20 +107,13 @@ export function AdDrawer({ ad, currency = "$", onClose }: AdDrawerProps) {
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {/* Creative preview */}
-          <div className="aspect-video bg-surface border-b border-border relative flex items-center justify-center">
-            {ad.thumbnailUrl ? (
-              <Image src={ad.thumbnailUrl} alt={ad.adName} fill className="object-cover" />
-            ) : (
-              <div className="flex flex-col items-center gap-2 text-subtle">
-                {hasVideo
-                  ? <Play className="w-10 h-10 text-blue/40" />
-                  : <div className="w-16 h-16 rounded-full border-2 border-border flex items-center justify-center">
-                      <span className="text-2xl font-display text-subtle">{ad.adName.charAt(0)}</span>
-                    </div>}
-                <span className="text-xs">{hasVideo ? "Video creative" : "Static creative"}</span>
-              </div>
-            )}
+          {/* Mobile preview — 9:16 phone frame */}
+          <div className="bg-surface border-b border-border">
+            <MobilePreview
+              thumbnailUrl={ad.thumbnailUrl}
+              videoUrl={ad.videoUrl}
+              adName={ad.adName}
+            />
           </div>
 
           {/* All metrics */}
