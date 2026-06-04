@@ -53,7 +53,7 @@ export function groupByCampaign(ads: AdData[]): CampaignGroup[] {
 export function formatMetric(
   value: number | undefined,
   type: string,
-  currency = "£"
+  currency = "$"
 ): string {
   if (value === undefined || value === null) return "—";
 
@@ -88,6 +88,6 @@ export function formatMetric(
   }
 }
 
-export function formatTarget(value: number, type: string, currency = "£"): string {
+export function formatTarget(value: number, type: string, currency = "$"): string {
   return formatMetric(value, type, currency);
 }

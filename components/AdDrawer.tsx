@@ -47,7 +47,7 @@ function MetricRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function AdDrawer({ ad, currency = "£", onClose }: AdDrawerProps) {
+export function AdDrawer({ ad, currency = "$", onClose }: AdDrawerProps) {
   const [suggestion, setSuggestion] = useState<string | null>(null);
   const [loading, setLoading]       = useState(false);
 

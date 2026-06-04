@@ -94,7 +94,7 @@ interface CreativeGalleryProps {
   currency?: string;
 }
 
-export function CreativeGallery({ ads, currency = "£" }: CreativeGalleryProps) {
+export function CreativeGallery({ ads, currency = "$" }: CreativeGalleryProps) {
   const [selectedAd, setSelectedAd] = useState<AdData | null>(null);
 
   if (ads.length === 0) {

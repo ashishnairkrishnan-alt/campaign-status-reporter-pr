@@ -31,7 +31,7 @@ export const brands: Brand[] = [
     id: "chivas",
     label: "Chivas",
     color: "#C9A84C",
-    currency: "£",
+    currency: "$",
     campaignLabel: "Chivas — Brand Awareness 2025",
     accounts: [
       {
@@ -49,7 +49,7 @@ export const brands: Brand[] = [
     id: "absolut",
     label: "Absolut",
     color: "#1A5276",
-    currency: "£",
+    currency: "$",
     campaignLabel: "Absolut — Always On 2025",
     accounts: [
       {
@@ -67,7 +67,7 @@ export const brands: Brand[] = [
     id: "jameson",
     label: "Jameson",
     color: "#2E7D32",
-    currency: "£",
+    currency: "$",
     campaignLabel: "Jameson — Always On 2025",
     accounts: [
       {

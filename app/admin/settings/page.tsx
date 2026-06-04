@@ -48,7 +48,7 @@ function useBrandSettings(brandId: string, defaults: BrandAdminSettings) {
 function BrandSettingsCard({ brand }: { brand: typeof brands[number] }) {
   const { settings, save, saved } = useBrandSettings(brand.id, {
     campaignLabel: brand.campaignLabel,
-    currency:      brand.currency,
+    currency:      brand.currency ?? "$",
     lastUpdated:   LAST_UPDATED,
   });
 
@@ -81,7 +81,7 @@ function BrandSettingsCard({ brand }: { brand: typeof brands[number] }) {
             <select value={form.currency}
               onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
               className={inputClass}>
-              <option value="£">£ GBP</option>
+              <option value="$">$ USD</option>
               <option value="€">€ EUR</option>
               <option value="$">$ USD</option>
             </select>

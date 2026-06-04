@@ -79,7 +79,7 @@ export default function DashboardPage() {
 
   const adminSettings = useAdminSettings(brandId, {
     campaignLabel: brand?.campaignLabel ?? "",
-    currency:      brand?.currency ?? "£",
+    currency:      brand?.currency ?? "$",
     lastUpdated:   LAST_UPDATED,
   });
 

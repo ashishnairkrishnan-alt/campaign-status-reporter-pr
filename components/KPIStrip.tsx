@@ -43,7 +43,7 @@ interface KPIStripProps {
   currency?: string;
 }
 
-export function KPIStrip({ metrics, objective, channel, brandColor, targets, currency = "£" }: KPIStripProps) {
+export function KPIStrip({ metrics, objective, channel, brandColor, targets, currency = "$" }: KPIStripProps) {
   type KPIDef = { label: string; value: string; target?: { label: string; status: "above" | "near" | "below" } };
   const kpis: KPIDef[] = [];
   const fm = (v: number | undefined, t: string) => formatMetric(v, t, currency);
