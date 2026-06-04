@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { BarChart2, ArrowLeft } from "lucide-react";
+import Image from "next/image";
+import { ArrowLeft } from "lucide-react";
 import { BrandSwitcher } from "@/components/BrandSwitcher";
 import { SettingsTable } from "@/components/SettingsTable";
 import { TargetsTable } from "@/components/TargetsTable";
@@ -26,35 +27,37 @@ const initialRows: AccountRow[] = brands.flatMap((brand) =>
 
 export default function SettingsPage() {
   return (
-    <div className="flex min-h-screen bg-navy-800">
+    <div className="flex min-h-screen bg-surface">
       {/* Sidebar */}
-      <aside className="hidden md:flex flex-col w-52 flex-shrink-0 bg-navy-900 border-r border-navy-700 p-4 pt-6">
-        <div className="flex items-center gap-2 mb-8 px-3">
-          <BarChart2 className="w-4 h-4 text-gold-500" />
-          <span className="font-display text-sm font-semibold text-white">
-            Performance
-          </span>
+      <aside className="hidden md:flex flex-col w-52 flex-shrink-0 bg-white border-r border-border">
+        <div className="flex items-center justify-center px-4 py-5 border-b-2" style={{ borderBottomColor: "#79ACD2" }}>
+          <Image src="/pr-logo.svg" alt="Pernod Ricard" width={120} height={56}
+            style={{ filter: "invert(14%) sepia(40%) saturate(700%) hue-rotate(190deg) brightness(30%) contrast(110%)" }} />
         </div>
-        <BrandSwitcher />
+        <div className="p-4 pt-5 flex-1">
+          <BrandSwitcher />
+        </div>
       </aside>
 
-      {/* Main */}
       <main className="flex-1 min-w-0">
         {/* Header */}
-        <header className="flex items-center gap-4 px-6 py-4 border-b border-navy-700 bg-navy-900/50 sticky top-0 z-30">
-          <Link
-            href="/dashboard/chivas"
-            className="p-1.5 rounded-lg text-navy-400 hover:text-white hover:bg-surface-3 transition-colors"
-          >
+        <header
+          className="flex items-center gap-4 px-6 sticky top-0 z-30 border-b-[3px]"
+          style={{
+            background: "linear-gradient(90deg, #001530 0%, #002957 55%, #003870 100%)",
+            borderBottomColor: "#79ACD2",
+            minHeight: "64px",
+          }}
+        >
+          <Link href="/dashboard/chivas"
+            className="p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors">
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
-            <h1 className="font-display text-xl font-semibold text-white">
-              Settings
-            </h1>
-            <p className="text-xs text-navy-400 mt-0.5">
-              Manage brand accounts, channels, and KPI targets
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/50 leading-none mb-0.5">
+              Pernod Ricard
             </p>
+            <h1 className="font-display text-lg font-semibold text-white leading-tight">Settings</h1>
           </div>
         </header>
 
@@ -62,71 +65,35 @@ export default function SettingsPage() {
           {/* Brand Accounts */}
           <section>
             <div className="mb-5">
-              <h2 className="font-display text-lg font-semibold text-white mb-1">
-                Brand Accounts
-              </h2>
-              <p className="text-sm text-navy-400">
-                Configure account IDs for each brand and channel. Changes update
-                the local config — in production, connect to a Supabase database
-                for persistence across deployments.
+              <h2 className="font-display text-lg font-semibold text-ink mb-1">Brand Accounts</h2>
+              <p className="text-sm text-muted">
+                Configure account IDs per brand and channel. In production, connect to Supabase for persistence across deployments.
               </p>
             </div>
             <SettingsTable initialRows={initialRows} />
           </section>
 
-          {/* Divider */}
-          <div className="border-t border-navy-700" />
+          <div className="border-t border-border" />
 
           {/* KPI Targets */}
           <section>
             <div className="mb-5">
-              <h2 className="font-display text-lg font-semibold text-white mb-1">
-                KPI Targets
-              </h2>
-              <p className="text-sm text-navy-400">
-                Set performance benchmarks per brand and objective. These appear
-                below each KPI tile on the dashboard.
+              <h2 className="font-display text-lg font-semibold text-ink mb-1">KPI Targets</h2>
+              <p className="text-sm text-muted">
+                Set performance benchmarks per brand and objective. These appear below each KPI tile on the dashboard.
               </p>
             </div>
-            <TargetsTable
-              initialTargets={targets}
-              brandIds={brands.map((b) => b.id)}
-            />
+            <TargetsTable initialTargets={targets} brandIds={brands.map((b) => b.id)} />
           </section>
 
-          {/* How to add a new brand */}
-          <section className="bg-surface-2 border border-navy-700 rounded-xl p-5">
-            <h3 className="font-display text-sm font-semibold text-gold-400 mb-3">
-              How to add a new brand
-            </h3>
-            <ol className="text-sm text-navy-300 space-y-2 list-decimal list-inside">
-              <li>
-                Add the brand entry to{" "}
-                <code className="text-gold-400/80 bg-navy-900 px-1.5 py-0.5 rounded text-xs">
-                  /config/brands.ts
-                </code>{" "}
-                with its account IDs.
-              </li>
-              <li>
-                Add target values in{" "}
-                <code className="text-gold-400/80 bg-navy-900 px-1.5 py-0.5 rounded text-xs">
-                  /config/targets.json
-                </code>{" "}
-                (or use the form above).
-              </li>
-              <li>
-                If using Windsor.ai, add the new account to the Windsor
-                dashboard and link it to the correct connector (Meta / Google /
-                TikTok).
-              </li>
-              <li>
-                Deploy — the brand switcher, routing, and data layer all derive
-                from{" "}
-                <code className="text-gold-400/80 bg-navy-900 px-1.5 py-0.5 rounded text-xs">
-                  brands.ts
-                </code>{" "}
-                automatically.
-              </li>
+          {/* How to add a brand */}
+          <section className="bg-white border border-border rounded-xl p-5">
+            <h3 className="font-display text-sm font-semibold text-navy-500 mb-3">How to add a new brand</h3>
+            <ol className="text-sm text-muted space-y-2 list-decimal list-inside">
+              <li>Add the brand to <code className="text-navy-500 bg-surface px-1.5 py-0.5 rounded text-xs">/config/brands.ts</code> with its account IDs.</li>
+              <li>Add targets in <code className="text-navy-500 bg-surface px-1.5 py-0.5 rounded text-xs">/config/targets.json</code> or use the form above.</li>
+              <li>Add the Windsor.ai account and link it to the correct connector (Meta / Google / TikTok).</li>
+              <li>Deploy — the brand switcher and data layer derive from <code className="text-navy-500 bg-surface px-1.5 py-0.5 rounded text-xs">brands.ts</code> automatically.</li>
             </ol>
           </section>
         </div>
