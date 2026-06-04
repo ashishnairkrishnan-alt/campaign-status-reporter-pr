@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Clock } from "lucide-react";
 import Image from "next/image";
 import { BrandSwitcher } from "@/components/BrandSwitcher";
 import { DateRangePicker } from "@/components/DateRangePicker";
@@ -12,7 +12,7 @@ import { CreativeGallery } from "@/components/CreativeGallery";
 import { AISummaryCard } from "@/components/AISummaryCard";
 import { CampaignFilter, DEFAULT_FILTER, applyFilter } from "@/components/CampaignFilter";
 import type { FilterState } from "@/components/CampaignFilter";
-import { getBrand } from "@/config/brands";
+import { getBrand, LAST_UPDATED } from "@/config/brands";
 import type { DashboardData, DateRangePreset, Targets } from "@/types";
 import targetsJson from "@/config/targets.json";
 import { aggregateMetrics } from "@/lib/metrics";
@@ -68,11 +68,9 @@ export default function DashboardPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Reset filters when brand changes
   const brandColor = brand?.color ?? "#002957";
   const brandLabel = brand?.label ?? brandId;
 
-  // Apply campaign/adset/ad filter
   const filteredAds = data ? applyFilter(data.allAds, filter) : [];
   const filteredTotals = aggregateMetrics(filteredAds);
 
@@ -93,22 +91,12 @@ export default function DashboardPage() {
   const brandTargets = targets[brandId] ?? undefined;
 
   return (
-    <div className="flex min-h-screen bg-surface">
+    <div className="flex min-h-screen" style={{ backgroundColor: "#f7f9fc" }}>
       {/* Sidebar */}
-      <aside className="hidden md:flex flex-col w-52 flex-shrink-0 bg-white border-r border-border">
-        {/* Sidebar logo area */}
-        <div
-          className="flex items-center justify-center px-4 py-5 border-b-2"
-          style={{ borderBottomColor: "#79ACD2" }}
-        >
-          <Image
-            src="/pr-logo.svg"
-            alt="Pernod Ricard"
-            width={120}
-            height={56}
-            className="invert brightness-0"
-            style={{ filter: "invert(14%) sepia(40%) saturate(700%) hue-rotate(190deg) brightness(30%) contrast(110%)" }}
-          />
+      <aside className="hidden md:flex flex-col w-52 flex-shrink-0 border-r" style={{ backgroundColor: "#ffffff", borderColor: "#dde4ee" }}>
+        <div className="flex items-center justify-center px-4 py-5 border-b-2" style={{ borderBottomColor: "#79ACD2" }}>
+          <Image src="/pr-logo.svg" alt="Pernod Ricard" width={120} height={56}
+            style={{ filter: "invert(14%) sepia(40%) saturate(700%) hue-rotate(190deg) brightness(30%) contrast(110%)" }} />
         </div>
         <div className="p-4 pt-5 flex-1">
           <BrandSwitcher />
@@ -117,10 +105,9 @@ export default function DashboardPage() {
 
       {/* Main */}
       <main className="flex-1 min-w-0 flex flex-col">
-
-        {/* ── Top header: French Navy gradient ── */}
+        {/* Header */}
         <header
-          className="flex items-center justify-between px-6 py-0 sticky top-0 z-30 border-b-[3px]"
+          className="flex items-center justify-between px-6 sticky top-0 z-30 border-b-[3px] gap-4 flex-wrap"
           style={{
             background: "linear-gradient(90deg, #001530 0%, #002957 55%, #003870 100%)",
             borderBottomColor: "#79ACD2",
@@ -129,15 +116,12 @@ export default function DashboardPage() {
         >
           {/* Left: logo + title */}
           <div className="flex items-center gap-4 py-3">
-            {/* Mobile logo */}
             <div className="md:hidden">
               <Image src="/pr-logo.svg" alt="Pernod Ricard" width={80} height={37} />
             </div>
-
-            <div className="hidden md:block h-8 w-px bg-white/20" />
-
+            <div className="hidden md:block h-8 w-px" style={{ backgroundColor: "rgba(255,255,255,0.2)" }} />
             <div>
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/50 leading-none mb-0.5">
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] leading-none mb-0.5" style={{ color: "rgba(255,255,255,0.5)" }}>
                 Pernod Ricard
               </p>
               <h1 className="font-display text-lg font-semibold text-white leading-tight tracking-wide">
@@ -146,9 +130,17 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Right: brand pill + date picker + refresh */}
-          <div className="flex items-center gap-3">
-            {/* Active brand pill */}
+          {/* Right: Last Updated + brand pill + date + refresh */}
+          <div className="flex items-center gap-3 py-3 flex-wrap">
+            {/* Last Updated badge */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border" style={{ borderColor: "rgba(121,172,210,0.4)", backgroundColor: "rgba(121,172,210,0.1)" }}>
+              <Clock className="w-3 h-3" style={{ color: "#79ACD2" }} />
+              <span className="text-[11px] font-medium" style={{ color: "#79ACD2" }}>
+                Updated {LAST_UPDATED}
+              </span>
+            </div>
+
+            {/* Brand pill */}
             <span
               className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border"
               style={{
@@ -157,41 +149,33 @@ export default function DashboardPage() {
                 color: brandColor === "#002957" ? "#79ACD2" : brandColor,
               }}
             >
-              <span
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ backgroundColor: brandColor === "#002957" ? "#79ACD2" : brandColor }}
-              />
+              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: brandColor === "#002957" ? "#79ACD2" : brandColor }} />
               {brandLabel}
             </span>
 
             <DateRangePicker value={dateRange} onChange={(v) => { setDateRange(v); setFilter(DEFAULT_FILTER); }} />
 
-            <button
-              onClick={() => refetch()}
-              disabled={isFetching}
-              className="p-2 rounded-lg border border-white/20 text-white/60 hover:text-white hover:border-white/40 transition-all disabled:opacity-40"
-              title="Refresh data"
-            >
+            <button onClick={() => refetch()} disabled={isFetching}
+              className="p-2 rounded-lg border text-white/60 hover:text-white hover:border-white/40 transition-all disabled:opacity-40"
+              style={{ borderColor: "rgba(255,255,255,0.2)" }}
+              title="Refresh data">
               <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
             </button>
           </div>
         </header>
 
-        {/* Mobile brand switcher */}
-        <div className="md:hidden px-4 py-3 border-b border-border bg-white overflow-x-auto">
+        {/* Mobile brand tabs */}
+        <div className="md:hidden px-4 py-3 border-b overflow-x-auto" style={{ backgroundColor: "#ffffff", borderColor: "#dde4ee" }}>
           <div className="flex gap-2">
             {["chivas", "absolut", "jameson"].map((b) => {
               const br = getBrand(b);
               const isActive = b === brandId;
               return (
-                <a
-                  key={b}
-                  href={`/dashboard/${b}`}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 border transition-all ${
-                    isActive ? "text-white" : "text-muted border-border"
-                  }`}
-                  style={isActive ? { backgroundColor: br?.color, borderColor: br?.color } : {}}
-                >
+                <a key={b} href={`/dashboard/${b}`}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 border transition-all"
+                  style={isActive
+                    ? { backgroundColor: br?.color, borderColor: br?.color, color: "#fff" }
+                    : { borderColor: "#dde4ee", color: "#3a5470" }}>
                   {br?.label}
                 </a>
               );
@@ -199,21 +183,16 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* ── Filter bar ── */}
+        {/* Filter bar */}
         {data && (
-          <div className="px-6 py-4 bg-white border-b border-border">
-            <CampaignFilter
-              ads={data.allAds}
-              filter={filter}
-              onChange={setFilter}
-            />
+          <div className="px-6 py-4 border-b" style={{ backgroundColor: "#ffffff", borderColor: "#dde4ee" }}>
+            <CampaignFilter ads={data.allAds} filter={filter} onChange={setFilter} />
           </div>
         )}
 
-        {/* Page body */}
+        {/* Body */}
         <div className="flex-1 p-6 space-y-7 page-enter">
-
-          {/* AI Summary */}
+          {/* AI Summary — auto-loads, no button */}
           {data && (
             <AISummaryCard
               brand={brandLabel}
@@ -225,17 +204,15 @@ export default function DashboardPage() {
 
           {/* KPI Strip */}
           <section>
-            <h2 className="text-[10px] font-medium uppercase tracking-widest text-subtle mb-4">
+            <h2 className="text-[10px] font-medium uppercase tracking-widest mb-4" style={{ color: "#6b8aaa" }}>
               Key Metrics
               {filteredAds.length !== (data?.allAds.length ?? 0) && (
-                <span className="ml-2 normal-case text-blue font-normal tracking-normal">
+                <span className="ml-2 normal-case font-normal tracking-normal" style={{ color: "#79ACD2" }}>
                   — {filteredAds.length} ad{filteredAds.length !== 1 ? "s" : ""} selected
                 </span>
               )}
             </h2>
-            {isLoading ? (
-              <SkeletonKPI />
-            ) : data ? (
+            {isLoading ? <SkeletonKPI /> : data ? (
               <KPIStrip
                 metrics={filteredTotals}
                 objective={dominantObjective}
@@ -248,12 +225,10 @@ export default function DashboardPage() {
 
           {/* Creative Gallery */}
           <section>
-            <h2 className="text-[10px] font-medium uppercase tracking-widest text-subtle mb-4">
+            <h2 className="text-[10px] font-medium uppercase tracking-widest mb-4" style={{ color: "#6b8aaa" }}>
               Active Creatives
             </h2>
-            {isLoading ? (
-              <SkeletonGallery />
-            ) : data ? (
+            {isLoading ? <SkeletonGallery /> : data ? (
               <CreativeGallery ads={filteredAds} />
             ) : null}
           </section>

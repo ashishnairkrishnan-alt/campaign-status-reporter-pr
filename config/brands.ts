@@ -4,7 +4,8 @@ export type Objective = "awareness" | "conversion";
 export interface BrandAccount {
   id: string;
   label: string;
-  accountId: string;
+  accountId: string;       // Meta account ID (numeric, without ACT_ prefix)
+  accountName?: string;    // Optional: Windsor account_name filter (if known)
   channel: Channel;
   color: string;
   active: boolean;
@@ -18,6 +19,12 @@ export interface Brand {
   accounts: BrandAccount[];
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Last Updated — edit this string to change what stakeholders see in the header
+// Format: "D MMMM YYYY" e.g. "4 June 2025"
+// ─────────────────────────────────────────────────────────────────────────────
+export const LAST_UPDATED = "4 June 2025";
+
 export const brands: Brand[] = [
   {
     id: "chivas",
@@ -27,7 +34,7 @@ export const brands: Brand[] = [
       {
         id: "chivas-meta",
         label: "Chivas Meta",
-        accountId: "ACT_XXXXXXXXX",
+        accountId: "687576933271645",   // ← real Meta account ID
         channel: "meta",
         color: "#C9A84C",
         active: true,

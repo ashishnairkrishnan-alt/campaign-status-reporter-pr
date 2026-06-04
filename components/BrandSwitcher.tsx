@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { brands } from "@/config/brands";
-import { Settings } from "lucide-react";
+
+// Settings link is intentionally removed from this component.
+// Access the admin panel at /admin/settings (share this URL only with your team).
 
 export function BrandSwitcher() {
   const pathname = usePathname();
@@ -41,20 +43,6 @@ export function BrandSwitcher() {
           </Link>
         );
       })}
-
-      <div className="mt-4 pt-4 border-t border-border">
-        <Link
-          href="/settings"
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
-            pathname === "/settings"
-              ? "bg-surface text-ink"
-              : "text-subtle hover:text-ink hover:bg-surface"
-          }`}
-        >
-          <Settings className="w-3.5 h-3.5 flex-shrink-0" />
-          Settings
-        </Link>
-      </div>
     </nav>
   );
 }

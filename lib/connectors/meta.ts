@@ -1,12 +1,17 @@
 import type { AdData, AdMetrics } from "@/types";
 import { detectObjective } from "@/config/brands";
 
+// Windsor.ai pulls ALL accounts connected to your API key.
+// We pass the numeric account ID as "account_id" — Windsor.ai uses this to
+// filter to just that Meta Ad Account. If omitted, all connected accounts return.
+
 const WINDSOR_BASE = "https://connectors.windsor.ai/all";
 
 const FIELDS = [
   "date",
   "datasource",
   "account_name",
+  "account_id",
   "campaign",
   "adset",
   "ad",
@@ -27,6 +32,8 @@ const FIELDS = [
 
 interface WindsorRow {
   date?: string;
+  account_name?: string;
+  account_id?: string;
   campaign?: string;
   adset?: string;
   ad?: string;
@@ -70,7 +77,17 @@ export async function fetchAds(
   url.searchParams.set("api_key", apiKey);
   url.searchParams.set("date_preset", preset);
   url.searchParams.set("fields", FIELDS);
-  url.searchParams.set("account_id", accountId);
+
+  // Pass account_id only if it's a real ID (not the placeholder)
+  const isReal =
+    accountId &&
+    accountId !== "ACT_XXXXXXXXX" &&
+    accountId.toLowerCase() !== "act_xxxxxxxxx";
+
+  if (isReal) {
+    // Windsor.ai accepts both numeric IDs and ACT_ prefixed IDs
+    url.searchParams.set("account_id", accountId);
+  }
 
   const res = await fetch(url.toString(), {
     next: { revalidate: 300 },
@@ -81,16 +98,26 @@ export async function fetchAds(
   }
 
   const json = await res.json();
+  // Windsor returns { data: [...] } or a plain array
   const rows: WindsorRow[] = Array.isArray(json)
     ? json
     : json.data ?? json.rows ?? [];
 
   if (rows.length === 0) return [];
 
-  // Group by ad to aggregate metrics across date rows
+  // If multiple accounts returned, filter to just our account
+  const filtered = isReal
+    ? rows.filter((r) => {
+        const rid = String(r.account_id ?? "").replace(/^act_/i, "");
+        const wantId = accountId.replace(/^act_/i, "");
+        return rid === wantId || !rid; // keep rows with matching or empty account_id
+      })
+    : rows;
+
+  // Group by ad name to aggregate metrics across date rows
   const adMap = new Map<string, { row: WindsorRow; metrics: AdMetrics }>();
 
-  for (const row of rows) {
+  for (const row of filtered) {
     const key = `${row.campaign}||${row.adset}||${row.ad}`;
     const existing = adMap.get(key);
 
@@ -113,43 +140,30 @@ export async function fetchAds(
         },
       });
     } else {
-      // Sum impressionable metrics; recalculate rates after
       existing.metrics.impressions += n(row.impressions);
       existing.metrics.spend += n(row.spend);
       if (existing.metrics.clicks !== undefined)
         existing.metrics.clicks += n(row.clicks);
       if (existing.metrics.reach !== undefined)
-        existing.metrics.reach = Math.max(
-          existing.metrics.reach,
-          n(row.reach)
-        );
+        existing.metrics.reach = Math.max(existing.metrics.reach, n(row.reach));
       if (existing.metrics.videoViews !== undefined)
         existing.metrics.videoViews =
           (existing.metrics.videoViews ?? 0) + n(row.video_views);
     }
   }
 
-  // Recalculate derived rates after aggregation
+  // Recalculate derived rates
   const ads: AdData[] = [];
   let idx = 0;
 
   for (const [, { row, metrics }] of adMap) {
     if (metrics.impressions > 0) {
-      if (metrics.clicks !== undefined && metrics.clicks > 0) {
-        metrics.ctr = metrics.clicks / metrics.impressions;
-      }
-      if (metrics.spend > 0 && metrics.impressions > 0) {
-        metrics.cpm = (metrics.spend / metrics.impressions) * 1000;
-      }
-      if (metrics.clicks !== undefined && metrics.clicks > 0) {
-        metrics.cpc = metrics.spend / metrics.clicks;
-      }
-      if (metrics.reach && metrics.reach > 0) {
-        metrics.frequency = metrics.impressions / metrics.reach;
-      }
-      if (metrics.videoViews !== undefined && metrics.videoViews > 0) {
+      if (metrics.clicks) metrics.ctr = metrics.clicks / metrics.impressions;
+      if (metrics.spend > 0) metrics.cpm = (metrics.spend / metrics.impressions) * 1000;
+      if (metrics.clicks) metrics.cpc = metrics.spend / metrics.clicks;
+      if (metrics.reach) metrics.frequency = metrics.impressions / metrics.reach;
+      if (metrics.videoViews)
         metrics.videoViewRate = metrics.videoViews / metrics.impressions;
-      }
     }
 
     const campaignName = row.campaign ?? "Unknown Campaign";
