@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { RefreshCw, Clock } from "lucide-react";
@@ -10,6 +10,7 @@ import { DateRangePicker } from "@/components/DateRangePicker";
 import { KPIStrip } from "@/components/KPIStrip";
 import { CreativeGallery } from "@/components/CreativeGallery";
 import { AISummaryCard } from "@/components/AISummaryCard";
+import { CampaignBanner } from "@/components/CampaignBanner";
 import { CampaignFilter, DEFAULT_FILTER, applyFilter } from "@/components/CampaignFilter";
 import type { FilterState } from "@/components/CampaignFilter";
 import { getBrand, LAST_UPDATED } from "@/config/brands";
@@ -18,6 +19,20 @@ import targetsJson from "@/config/targets.json";
 import { aggregateMetrics } from "@/lib/metrics";
 
 const targets = targetsJson as Targets;
+
+// Read admin settings from localStorage (set via /admin/settings)
+function useAdminSettings(brandId: string, defaults: { campaignLabel: string; currency: string; lastUpdated: string }) {
+  const [settings, setSettings] = useState(defaults);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(`admin_settings_${brandId}`);
+      if (raw) setSettings(JSON.parse(raw));
+      else setSettings(defaults);
+    } catch { setSettings(defaults); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brandId]);
+  return settings;
+}
 
 function SkeletonKPI() {
   return (
@@ -50,7 +65,7 @@ function SkeletonGallery() {
 
 async function fetchDashboard(brand: string, dateRange: DateRangePreset): Promise<DashboardData> {
   const res = await fetch(`/api/windsor?brand=${brand}&dateRange=${dateRange}`);
-  if (!res.ok) throw new Error("Failed to fetch dashboard data");
+  if (!res.ok) throw new Error("Failed to fetch");
   return res.json();
 }
 
@@ -62,6 +77,12 @@ export default function DashboardPage() {
   const [dateRange, setDateRange] = useState<DateRangePreset>("30d");
   const [filter, setFilter] = useState<FilterState>(DEFAULT_FILTER);
 
+  const adminSettings = useAdminSettings(brandId, {
+    campaignLabel: brand?.campaignLabel ?? "",
+    currency:      brand?.currency ?? "£",
+    lastUpdated:   LAST_UPDATED,
+  });
+
   const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: ["dashboard", brandId, dateRange],
     queryFn: () => fetchDashboard(brandId, dateRange),
@@ -71,21 +92,21 @@ export default function DashboardPage() {
   const brandColor = brand?.color ?? "#002957";
   const brandLabel = brand?.label ?? brandId;
 
-  const filteredAds = data ? applyFilter(data.allAds, filter) : [];
+  const filteredAds  = data ? applyFilter(data.allAds, filter) : [];
   const filteredTotals = aggregateMetrics(filteredAds);
 
   const dominantObjective = (() => {
     if (!filteredAds.length) return "awareness" as const;
-    const counts = { awareness: 0, conversion: 0 };
-    for (const ad of filteredAds) counts[ad.objective]++;
-    return counts.conversion > counts.awareness ? "conversion" : "awareness";
+    const c = { awareness: 0, conversion: 0 };
+    for (const ad of filteredAds) c[ad.objective]++;
+    return c.conversion > c.awareness ? "conversion" : "awareness";
   })();
 
   const dominantChannel = (() => {
     if (!filteredAds.length) return "meta" as const;
-    const counts: Record<string, number> = {};
-    for (const ad of filteredAds) counts[ad.channel] = (counts[ad.channel] ?? 0) + 1;
-    return (Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "meta") as "meta" | "google" | "tiktok";
+    const c: Record<string, number> = {};
+    for (const ad of filteredAds) c[ad.channel] = (c[ad.channel] ?? 0) + 1;
+    return (Object.entries(c).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "meta") as "meta" | "google" | "tiktok";
   })();
 
   const brandTargets = targets[brandId] ?? undefined;
@@ -93,8 +114,10 @@ export default function DashboardPage() {
   return (
     <div className="flex min-h-screen" style={{ backgroundColor: "#f7f9fc" }}>
       {/* Sidebar */}
-      <aside className="hidden md:flex flex-col w-52 flex-shrink-0 border-r" style={{ backgroundColor: "#ffffff", borderColor: "#dde4ee" }}>
-        <div className="flex items-center justify-center px-4 py-5 border-b-2" style={{ borderBottomColor: "#79ACD2" }}>
+      <aside className="hidden md:flex flex-col w-52 flex-shrink-0 border-r"
+        style={{ backgroundColor: "#ffffff", borderColor: "#dde4ee" }}>
+        <div className="flex items-center justify-center px-4 py-5 border-b-2"
+          style={{ borderBottomColor: "#79ACD2" }}>
           <Image src="/pr-logo.svg" alt="Pernod Ricard" width={120} height={56}
             style={{ filter: "invert(14%) sepia(40%) saturate(700%) hue-rotate(190deg) brightness(30%) contrast(110%)" }} />
         </div>
@@ -103,7 +126,6 @@ export default function DashboardPage() {
         </div>
       </aside>
 
-      {/* Main */}
       <main className="flex-1 min-w-0 flex flex-col">
         {/* Header */}
         <header
@@ -114,58 +136,54 @@ export default function DashboardPage() {
             minHeight: "64px",
           }}
         >
-          {/* Left: logo + title */}
           <div className="flex items-center gap-4 py-3">
             <div className="md:hidden">
               <Image src="/pr-logo.svg" alt="Pernod Ricard" width={80} height={37} />
             </div>
             <div className="hidden md:block h-8 w-px" style={{ backgroundColor: "rgba(255,255,255,0.2)" }} />
             <div>
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] leading-none mb-0.5" style={{ color: "rgba(255,255,255,0.5)" }}>
-                Pernod Ricard
-              </p>
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] leading-none mb-0.5"
+                style={{ color: "rgba(255,255,255,0.5)" }}>Pernod Ricard</p>
               <h1 className="font-display text-lg font-semibold text-white leading-tight tracking-wide">
                 Paid Media Dashboard
               </h1>
             </div>
           </div>
 
-          {/* Right: Last Updated + brand pill + date + refresh */}
           <div className="flex items-center gap-3 py-3 flex-wrap">
-            {/* Last Updated badge */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border" style={{ borderColor: "rgba(121,172,210,0.4)", backgroundColor: "rgba(121,172,210,0.1)" }}>
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border"
+              style={{ borderColor: "rgba(121,172,210,0.4)", backgroundColor: "rgba(121,172,210,0.1)" }}>
               <Clock className="w-3 h-3" style={{ color: "#79ACD2" }} />
               <span className="text-[11px] font-medium" style={{ color: "#79ACD2" }}>
-                Updated {LAST_UPDATED}
+                Updated {adminSettings.lastUpdated}
               </span>
             </div>
 
-            {/* Brand pill */}
-            <span
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border"
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border"
               style={{
                 backgroundColor: `${brandColor}20`,
                 borderColor: `${brandColor}50`,
                 color: brandColor === "#002957" ? "#79ACD2" : brandColor,
-              }}
-            >
-              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: brandColor === "#002957" ? "#79ACD2" : brandColor }} />
+              }}>
+              <span className="w-1.5 h-1.5 rounded-full"
+                style={{ backgroundColor: brandColor === "#002957" ? "#79ACD2" : brandColor }} />
               {brandLabel}
             </span>
 
             <DateRangePicker value={dateRange} onChange={(v) => { setDateRange(v); setFilter(DEFAULT_FILTER); }} />
 
             <button onClick={() => refetch()} disabled={isFetching}
-              className="p-2 rounded-lg border text-white/60 hover:text-white hover:border-white/40 transition-all disabled:opacity-40"
+              className="p-2 rounded-lg border text-white/60 hover:text-white transition-all disabled:opacity-40"
               style={{ borderColor: "rgba(255,255,255,0.2)" }}
-              title="Refresh data">
+              title="Refresh">
               <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
             </button>
           </div>
         </header>
 
         {/* Mobile brand tabs */}
-        <div className="md:hidden px-4 py-3 border-b overflow-x-auto" style={{ backgroundColor: "#ffffff", borderColor: "#dde4ee" }}>
+        <div className="md:hidden px-4 py-3 border-b overflow-x-auto"
+          style={{ backgroundColor: "#ffffff", borderColor: "#dde4ee" }}>
           <div className="flex gap-2">
             {["chivas", "absolut", "jameson"].map((b) => {
               const br = getBrand(b);
@@ -191,8 +209,19 @@ export default function DashboardPage() {
         )}
 
         {/* Body */}
-        <div className="flex-1 p-6 space-y-7 page-enter">
-          {/* AI Summary — auto-loads, no button */}
+        <div className="flex-1 p-6 space-y-6 page-enter">
+
+          {/* ── Campaign Banner (read-only for stakeholders) ── */}
+          {brand && (
+            <CampaignBanner
+              brandId={brandId}
+              defaultLabel={adminSettings.campaignLabel || brand.campaignLabel}
+              brandColor={brandColor}
+              isAdmin={false}   // stakeholder view — no edit button
+            />
+          )}
+
+          {/* AI Summary */}
           {data && (
             <AISummaryCard
               brand={brandLabel}
@@ -204,10 +233,12 @@ export default function DashboardPage() {
 
           {/* KPI Strip */}
           <section>
-            <h2 className="text-[10px] font-medium uppercase tracking-widest mb-4" style={{ color: "#6b8aaa" }}>
+            <h2 className="text-[10px] font-medium uppercase tracking-widest mb-4"
+              style={{ color: "#6b8aaa" }}>
               Key Metrics
               {filteredAds.length !== (data?.allAds.length ?? 0) && (
-                <span className="ml-2 normal-case font-normal tracking-normal" style={{ color: "#79ACD2" }}>
+                <span className="ml-2 normal-case font-normal tracking-normal"
+                  style={{ color: "#79ACD2" }}>
                   — {filteredAds.length} ad{filteredAds.length !== 1 ? "s" : ""} selected
                 </span>
               )}
@@ -219,17 +250,17 @@ export default function DashboardPage() {
                 channel={dominantChannel}
                 brandColor={brandColor}
                 targets={brandTargets}
+                currency={adminSettings.currency}
               />
             ) : null}
           </section>
 
           {/* Creative Gallery */}
           <section>
-            <h2 className="text-[10px] font-medium uppercase tracking-widest mb-4" style={{ color: "#6b8aaa" }}>
-              Active Creatives
-            </h2>
+            <h2 className="text-[10px] font-medium uppercase tracking-widest mb-4"
+              style={{ color: "#6b8aaa" }}>Active Creatives</h2>
             {isLoading ? <SkeletonGallery /> : data ? (
-              <CreativeGallery ads={filteredAds} />
+              <CreativeGallery ads={filteredAds} currency={adminSettings.currency} />
             ) : null}
           </section>
         </div>
