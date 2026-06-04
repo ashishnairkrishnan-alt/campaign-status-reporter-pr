@@ -4,7 +4,7 @@ export type Objective = "awareness" | "conversion";
 export interface BrandAccount {
   id: string;
   label: string;
-  accountId: string;       // Meta account ID (numeric)
+  accountName: string;   // Must match the "Account Name" in Windsor.ai exactly
   channel: Channel;
   color: string;
   active: boolean;
@@ -15,15 +15,12 @@ export interface Brand {
   id: string;
   label: string;
   color: string;
-  currency: string;        // e.g. "£" | "$" | "€"
-  campaignLabel: string;   // Featured campaign title shown at top of dashboard
+  currency: string;
+  campaignLabel: string;
   accounts: BrandAccount[];
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// LAST_UPDATED — edit this to change the "Updated" badge in the header.
-// Format: "D MMMM YYYY"  e.g. "4 June 2025"
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Edit this to change the "Updated" badge in the header ───────────────────
 export const LAST_UPDATED = "4 June 2025";
 
 export const brands: Brand[] = [
@@ -37,7 +34,7 @@ export const brands: Brand[] = [
       {
         id: "chivas-meta",
         label: "Chivas Meta",
-        accountId: "687576933271645",
+        accountName: "ARE_Chivas_Internal",   // ← Windsor account_name
         channel: "meta",
         color: "#C9A84C",
         active: true,
@@ -55,7 +52,7 @@ export const brands: Brand[] = [
       {
         id: "absolut-meta",
         label: "Absolut Meta",
-        accountId: "ACT_XXXXXXXXX",
+        accountName: "ARE_Absolut_Internal",  // ← Windsor account_name
         channel: "meta",
         color: "#1A5276",
         active: true,
@@ -73,7 +70,7 @@ export const brands: Brand[] = [
       {
         id: "jameson-meta",
         label: "Jameson Meta",
-        accountId: "ACT_XXXXXXXXX",
+        accountName: "ARE_Jameson_Internal",  // ← update if different in Windsor
         channel: "meta",
         color: "#2E7D32",
         active: true,
@@ -89,19 +86,9 @@ export function getBrand(id: string): Brand | undefined {
 
 export function detectObjective(campaignName: string): Objective {
   const upper = campaignName.toUpperCase();
-  if (
-    upper.includes("AWA") ||
-    upper.includes("REACH") ||
-    upper.includes("BRAND") ||
-    upper.includes("AWARENESS") ||
-    upper.includes("VIEWS")
-  ) return "awareness";
-  if (
-    upper.includes("CONV") ||
-    upper.includes("LEAD") ||
-    upper.includes("PURCHASE") ||
-    upper.includes("SALE") ||
-    upper.includes("RETARG")
-  ) return "conversion";
+  if (upper.includes("AWA") || upper.includes("REACH") || upper.includes("BRAND") ||
+      upper.includes("AWARENESS") || upper.includes("VIEWS")) return "awareness";
+  if (upper.includes("CONV") || upper.includes("LEAD") || upper.includes("PURCHASE") ||
+      upper.includes("SALE") || upper.includes("RETARG")) return "conversion";
   return "awareness";
 }

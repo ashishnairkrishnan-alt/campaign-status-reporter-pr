@@ -1,23 +1,19 @@
-import type { Channel } from "@/types";
-import type { AdData } from "@/types";
-import { fetchAds as fetchMetaAds } from "./meta";
+import type { Channel, AdData } from "@/types";
+import { fetchAds as fetchMetaAds   } from "./meta";
 import { fetchAds as fetchGoogleAds } from "./google";
 import { fetchAds as fetchTikTokAds } from "./tiktok";
 
+// accountIdentifier = Windsor account_name for Meta (e.g. "ARE_Chivas_Internal")
 export async function fetchAdsByChannel(
   channel: Channel,
-  accountId: string,
+  accountIdentifier: string,
   dateRange: { start: string; end: string },
   apiKey: string
 ): Promise<AdData[]> {
   switch (channel) {
-    case "meta":
-      return fetchMetaAds(accountId, dateRange, apiKey);
-    case "google":
-      return fetchGoogleAds(accountId, dateRange, apiKey);
-    case "tiktok":
-      return fetchTikTokAds(accountId, dateRange, apiKey);
-    default:
-      return [];
+    case "meta":   return fetchMetaAds(accountIdentifier, dateRange, apiKey);
+    case "google": return fetchGoogleAds(accountIdentifier, dateRange, apiKey);
+    case "tiktok": return fetchTikTokAds(accountIdentifier, dateRange, apiKey);
+    default:       return [];
   }
 }

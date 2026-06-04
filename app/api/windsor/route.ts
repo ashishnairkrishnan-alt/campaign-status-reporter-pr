@@ -8,53 +8,55 @@ import { subDays, format } from "date-fns";
 
 function getDateRange(preset: string): { start: string; end: string } {
   const today = new Date();
-  const end = format(today, "yyyy-MM-dd");
-  const days = preset === "7d" ? 7 : preset === "14d" ? 14 : 30;
-  const start = format(subDays(today, days), "yyyy-MM-dd");
-  return { start, end };
+  const days  = preset === "7d" ? 7 : preset === "14d" ? 14 : 30;
+  return {
+    start: format(subDays(today, days), "yyyy-MM-dd"),
+    end:   format(today, "yyyy-MM-dd"),
+  };
 }
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const brandId = searchParams.get("brand") ?? "chivas";
+  const brandId   = searchParams.get("brand")     ?? "chivas";
   const datePreset = searchParams.get("dateRange") ?? "30d";
 
   const brand = brands.find((b) => b.id === brandId);
-  if (!brand) {
-    return NextResponse.json({ error: "Brand not found" }, { status: 404 });
-  }
+  if (!brand) return NextResponse.json({ error: "Brand not found" }, { status: 404 });
 
   const dateRange = getDateRange(datePreset);
-  const apiKey = process.env.WINDSOR_API_KEY ?? "";
+  const apiKey    = process.env.WINDSOR_API_KEY ?? "";
 
   let allAds = await (async () => {
+    if (!apiKey) return [];
+
     const results = await Promise.allSettled(
       brand.accounts
-        .filter((a) => a.active && a.accountId !== "ACT_XXXXXXXXX")
+        .filter((a) => a.active)
         .map((account) =>
-          fetchAdsByChannel(account.channel, account.accountId, dateRange, apiKey)
+          // Pass accountName (e.g. "ARE_Chivas_Internal") — Windsor filters by this
+          fetchAdsByChannel(account.channel, account.accountName, dateRange, apiKey)
         )
     );
 
     return results
-      .filter((r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof fetchAdsByChannel>>> => r.status === "fulfilled")
+      .filter((r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof fetchAdsByChannel>>> =>
+        r.status === "fulfilled"
+      )
       .flatMap((r) => r.value);
   })();
 
-  // Fall back to mock data if Windsor returns nothing or accounts aren't configured
+  // Fall back to mock data if Windsor returns nothing
   if (allAds.length === 0) {
+    console.log(`[windsor] No real data for ${brandId} — using mock data`);
     allAds = getMockData(brandId);
   }
-
-  const campaigns = groupByCampaign(allAds);
-  const aggregateTotals = aggregateMetrics(allAds);
 
   const data: DashboardData = {
     brand: brandId,
     dateRange,
-    campaigns,
+    campaigns:       groupByCampaign(allAds),
     allAds,
-    aggregateTotals,
+    aggregateTotals: aggregateMetrics(allAds),
   };
 
   return NextResponse.json(data, {
