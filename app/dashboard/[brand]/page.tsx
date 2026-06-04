@@ -108,11 +108,13 @@ export default function DashboardPage() {
   const brandColor = brand?.color ?? "#002957";
   const brandLabel = brand?.label ?? brandId;
 
-  // Apply admin pre-selection on top of user filter
+  // Apply admin pre-selection on top of user filter (only if non-empty strings)
   const baseAds = data ? (() => {
     let ads = data.allAds;
-    if (adminViewFilter?.campaign) ads = ads.filter((a) => a.campaignName === adminViewFilter.campaign);
-    if (adminViewFilter?.adset)    ads = ads.filter((a) => a.adsetName    === adminViewFilter.adset);
+    const vc = adminViewFilter?.campaign?.trim();
+    const va = adminViewFilter?.adset?.trim();
+    if (vc) ads = ads.filter((a) => a.campaignName === vc);
+    if (va) ads = ads.filter((a) => a.adsetName    === va);
     return ads;
   })() : [];
 

@@ -1,19 +1,21 @@
 import type { AdData, AdMetrics } from "@/types";
 import { detectObjective } from "@/config/brands";
 
-// Windsor.ai returns all accounts under the API key.
-// We filter client-side by account_name (e.g. "ARE_Chivas_Internal").
-// Do NOT send account_id — Windsor ignores it and returns 0 rows.
-
 const WINDSOR_BASE = "https://connectors.windsor.ai/all";
 
+// Request all possible field name variants — Windsor varies by connector version
 const FIELDS = [
   "date",
   "datasource",
   "account_name",
   "campaign",
+  "campaign_name",
   "adset",
+  "adset_name",
+  "adgroup",
+  "adgroup_name",
   "ad",
+  "ad_name",
   "impressions",
   "reach",
   "frequency",
@@ -33,10 +35,18 @@ const FIELDS = [
 interface WindsorRow {
   date?: string;
   account_name?: string;
+  // Campaign — Windsor returns one of these
   campaign?: string;
+  campaign_name?: string;
+  // Adset — Windsor returns one of these
   adset?: string;
+  adset_name?: string;
+  adgroup?: string;
+  adgroup_name?: string;
+  // Ad — Windsor returns one of these
   ad?: string;
-  video_url?: string;
+  ad_name?: string;
+  // Metrics
   impressions?: string | number;
   reach?: string | number;
   frequency?: string | number;
@@ -50,12 +60,28 @@ interface WindsorRow {
   roas?: string | number;
   cost_per_result?: string | number;
   thumbnail_url?: string;
+  video_url?: string;
+}
+
+// Pick whichever field name Windsor actually returned
+function getCampaign(r: WindsorRow): string {
+  return r.campaign_name ?? r.campaign ?? "";
+}
+function getAdset(r: WindsorRow): string {
+  return r.adset_name ?? r.adset ?? r.adgroup_name ?? r.adgroup ?? "";
+}
+function getAd(r: WindsorRow): string {
+  return r.ad_name ?? r.ad ?? "";
 }
 
 function n(v: string | number | undefined): number {
   if (v === undefined || v === null || v === "") return 0;
   const p = typeof v === "string" ? parseFloat(v.replace(/,/g, "")) : v;
   return isNaN(p) ? 0 : p;
+}
+
+function widenPreset(_preset: string): string {
+  return "last_180d"; // always fetch wide window — data may be months old
 }
 
 function buildDatePreset(dateRange: { start: string; end: string }): string {
@@ -68,51 +94,45 @@ function buildDatePreset(dateRange: { start: string; end: string }): string {
   return "last_180d";
 }
 
-// Windsor data may lag behind — always fetch a wider window and filter client-side
-function widenPreset(preset: string): string {
-  // Always use at least last_180d so older data (e.g. Dec 2025 campaigns) is included
-  return "last_180d";
-}
-
 export async function fetchAds(
-  accountName: string,            // Windsor "Account Name" e.g. "ARE_Chivas_Internal"
+  accountName: string,
   dateRange: { start: string; end: string },
   apiKey: string
 ): Promise<AdData[]> {
-  const preset = widenPreset(buildDatePreset(dateRange)); // always fetch 180d window
+  const preset = widenPreset(buildDatePreset(dateRange));
 
   const url = new URL(WINDSOR_BASE);
-  url.searchParams.set("api_key", apiKey);
-  url.searchParams.set("date_preset", preset);
-  url.searchParams.set("fields", FIELDS);
-  // DO NOT add account_id — Windsor doesn't support it as a filter
+  url.searchParams.set("api_key",      apiKey);
+  url.searchParams.set("date_preset",  preset);
+  url.searchParams.set("fields",       FIELDS);
+  // Do NOT add account_id — Windsor doesn't filter by it
 
   const res = await fetch(url.toString(), { next: { revalidate: 300 } });
-
-  if (!res.ok) {
-    throw new Error(`Windsor API error: ${res.status} ${res.statusText}`);
-  }
+  if (!res.ok) throw new Error(`Windsor ${res.status}: ${res.statusText}`);
 
   const json = await res.json();
   const allRows: WindsorRow[] = Array.isArray(json)
     ? json
     : json.data ?? json.rows ?? [];
 
-  // Filter to just this brand's account
+  // Filter to this brand's account
   const rows = accountName
-    ? allRows.filter((r) =>
-        (r.account_name ?? "").toLowerCase() === accountName.toLowerCase()
+    ? allRows.filter(
+        (r) => (r.account_name ?? "").toLowerCase() === accountName.toLowerCase()
       )
     : allRows;
 
   if (rows.length === 0) return [];
 
-  // Aggregate by ad (multiple date rows per ad)
+  // Aggregate by campaign + adset + ad across date rows
   const adMap = new Map<string, { row: WindsorRow; metrics: AdMetrics }>();
 
   for (const row of rows) {
-    const key = `${row.campaign}||${row.adset}||${row.ad}`;
-    const ex  = adMap.get(key);
+    const campaignName = getCampaign(row);
+    const adsetName    = getAdset(row);
+    const adName       = getAd(row);
+    const key          = `${campaignName}||${adsetName}||${adName}`;
+    const ex           = adMap.get(key);
 
     if (!ex) {
       adMap.set(key, {
@@ -135,13 +155,12 @@ export async function fetchAds(
     } else {
       ex.metrics.impressions += n(row.impressions);
       ex.metrics.spend       += n(row.spend);
-      if (ex.metrics.clicks    !== undefined) ex.metrics.clicks    += n(row.clicks);
-      if (ex.metrics.videoViews !== undefined) ex.metrics.videoViews = (ex.metrics.videoViews ?? 0) + n(row.video_views);
-      if (ex.metrics.reach     !== undefined) ex.metrics.reach      = Math.max(ex.metrics.reach, n(row.reach));
+      if (ex.metrics.clicks     !== undefined) ex.metrics.clicks     += n(row.clicks);
+      if (ex.metrics.videoViews !== undefined) ex.metrics.videoViews  = (ex.metrics.videoViews ?? 0) + n(row.video_views);
+      if (ex.metrics.reach      !== undefined) ex.metrics.reach       = Math.max(ex.metrics.reach, n(row.reach));
     }
   }
 
-  // Recalculate derived rates
   const ads: AdData[] = [];
   let idx = 0;
 
@@ -154,12 +173,15 @@ export async function fetchAds(
       if (metrics.videoViews) metrics.videoViewRate = metrics.videoViews / metrics.impressions;
     }
 
-    const campaignName = row.campaign ?? "Unknown Campaign";
+    const campaignName = getCampaign(row) || "Unknown Campaign";
+    const adsetName    = getAdset(row)    || "";
+    const adName       = getAd(row)       || "";
+
     ads.push({
       id:           `meta-${accountName}-${idx++}`,
       campaignName,
-      adsetName:    row.adset ?? "Unknown Ad Set",
-      adName:       row.ad    ?? "Unknown Ad",
+      adsetName:    adsetName || campaignName,   // fall back to campaign if adset empty
+      adName:       adName    || campaignName,   // fall back to campaign if ad name empty
       channel:      "meta",
       objective:    detectObjective(campaignName),
       metrics,
