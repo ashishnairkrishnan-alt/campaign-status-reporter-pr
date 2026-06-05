@@ -31,11 +31,10 @@ function AdCard({ ad, currency, onClick }: AdCardProps) {
   const hasVideo = m.videoViews !== undefined;
   const fm       = (v: number | undefined, t: string) => formatMetric(v, t, currency);
 
-  // Metrics shown on every card regardless of objective
   const inlineMetrics = [
-    { label: "Impressions", value: fm(m.impressions, "impressions") },
-    { label: "Reach",       value: fm(m.reach,       "reach") },
-    { label: "CTR",         value: fm(m.ctr,         "ctr") },
+    { label: "Impressions",  value: fm(m.impressions,  "impressions") },
+    { label: "Video Views",  value: fm(m.videoViews,   "videoViews") },
+    { label: "CTR",          value: fm(m.ctr,          "ctr") },
   ];
 
   return (

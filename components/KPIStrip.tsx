@@ -52,17 +52,11 @@ export function KPIStrip({ metrics, objective, channel, brandColor, targets, cur
   // All objectives and channels show Impressions + CTR as standard
   // Plus objective/channel-specific metrics
   if (objective === "awareness") {
-    kpis.push({ label: "Impressions", value: fm(metrics.impressions, "impressions") });
-    kpis.push({ label: "Reach",       value: fm(metrics.reach, "reach"),
+    kpis.push({ label: "Impressions",  value: fm(metrics.impressions, "impressions") });
+    kpis.push({ label: "Reach",        value: fm(metrics.reach, "reach"),
       target: targets ? { label: ft(targets.awareness.reach, "reach"), status: getTargetStatus(metrics.reach ?? 0, targets.awareness.reach) } : undefined });
-    kpis.push({ label: "CTR",         value: fm(metrics.ctr, "ctr") });
-    if (channel === "meta" || channel === "tiktok") {
-      kpis.push({ label: "Video View Rate", value: fm(metrics.videoViewRate, "videoViewRate"),
-        target: targets ? { label: ft(targets.awareness.vtr, "videoViewRate"), status: getTargetStatus(metrics.videoViewRate ?? 0, targets.awareness.vtr) } : undefined });
-    } else {
-      kpis.push({ label: "Frequency", value: fm(metrics.frequency, "frequency"),
-        target: targets ? { label: ft(targets.awareness.frequency, "frequency"), status: getTargetStatus(metrics.frequency ?? 0, targets.awareness.frequency, false) } : undefined });
-    }
+    kpis.push({ label: "Video Views",  value: fm(metrics.videoViews, "videoViews") });
+    kpis.push({ label: "CTR",          value: fm(metrics.ctr, "ctr") });
   } else {
     kpis.push({ label: "Impressions", value: fm(metrics.impressions, "impressions") });
     kpis.push({ label: "CTR",         value: fm(metrics.ctr, "ctr"),
