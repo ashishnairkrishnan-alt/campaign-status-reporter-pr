@@ -49,36 +49,28 @@ export function KPIStrip({ metrics, objective, channel, brandColor, targets, cur
   const fm = (v: number | undefined, t: string) => formatMetric(v, t, currency);
   const ft = (v: number, t: string) => formatTarget(v, t, currency);
 
+  // All objectives and channels show Impressions + CTR as standard
+  // Plus objective/channel-specific metrics
   if (objective === "awareness") {
-    if (channel === "meta") {
-      kpis.push({ label: "Reach",           value: fm(metrics.reach, "reach"),
-        target: targets ? { label: ft(targets.awareness.reach, "reach"),     status: getTargetStatus(metrics.reach ?? 0, targets.awareness.reach) } : undefined });
-      kpis.push({ label: "Frequency",       value: fm(metrics.frequency, "frequency"),
-        target: targets ? { label: ft(targets.awareness.frequency, "frequency"), status: getTargetStatus(metrics.frequency ?? 0, targets.awareness.frequency, false) } : undefined });
-      kpis.push({ label: "CPM",             value: fm(metrics.cpm, "cpm"),
-        target: targets ? { label: ft(targets.awareness.cpm, "cpm"),         status: getTargetStatus(metrics.cpm ?? 0, targets.awareness.cpm, false) } : undefined });
+    kpis.push({ label: "Impressions", value: fm(metrics.impressions, "impressions") });
+    kpis.push({ label: "Reach",       value: fm(metrics.reach, "reach"),
+      target: targets ? { label: ft(targets.awareness.reach, "reach"), status: getTargetStatus(metrics.reach ?? 0, targets.awareness.reach) } : undefined });
+    kpis.push({ label: "CTR",         value: fm(metrics.ctr, "ctr") });
+    if (channel === "meta" || channel === "tiktok") {
       kpis.push({ label: "Video View Rate", value: fm(metrics.videoViewRate, "videoViewRate"),
         target: targets ? { label: ft(targets.awareness.vtr, "videoViewRate"), status: getTargetStatus(metrics.videoViewRate ?? 0, targets.awareness.vtr) } : undefined });
-    } else if (channel === "google") {
-      kpis.push({ label: "Impressions", value: fm(metrics.impressions, "impressions") });
-      kpis.push({ label: "Clicks",      value: fm(metrics.clicks, "clicks") });
-      kpis.push({ label: "CPM",         value: fm(metrics.cpm, "cpm") });
-      kpis.push({ label: "CTR",         value: fm(metrics.ctr, "ctr") });
     } else {
-      kpis.push({ label: "Reach",           value: fm(metrics.reach, "reach") });
-      kpis.push({ label: "Video Views",     value: fm(metrics.videoViews, "videoViews") });
-      kpis.push({ label: "Video View Rate", value: fm(metrics.videoViewRate, "videoViewRate") });
-      kpis.push({ label: "CPM",             value: fm(metrics.cpm, "cpm") });
+      kpis.push({ label: "Frequency", value: fm(metrics.frequency, "frequency"),
+        target: targets ? { label: ft(targets.awareness.frequency, "frequency"), status: getTargetStatus(metrics.frequency ?? 0, targets.awareness.frequency, false) } : undefined });
     }
   } else {
-    kpis.push({ label: "CTR",             value: fm(metrics.ctr, "ctr"),
-      target: targets ? { label: ft(targets.conversion.ctr, "ctr"),     status: getTargetStatus(metrics.ctr ?? 0, targets.conversion.ctr) } : undefined });
-    kpis.push({ label: "CPC",             value: fm(metrics.cpc, "cpc"),
-      target: targets ? { label: ft(targets.conversion.cpc, "cpc"),     status: getTargetStatus(metrics.cpc ?? 0, targets.conversion.cpc, false) } : undefined });
-    kpis.push({ label: "Cost per Result", value: fm(metrics.costPerResult, "costPerResult"),
-      target: targets ? { label: ft(targets.conversion.cpl, "cpl"),     status: getTargetStatus(metrics.costPerResult ?? 0, targets.conversion.cpl, false) } : undefined });
-    kpis.push({ label: "ROAS",            value: fm(metrics.roas, "roas"),
-      target: targets ? { label: ft(targets.conversion.roas, "roas"),   status: getTargetStatus(metrics.roas ?? 0, targets.conversion.roas) } : undefined });
+    kpis.push({ label: "Impressions", value: fm(metrics.impressions, "impressions") });
+    kpis.push({ label: "CTR",         value: fm(metrics.ctr, "ctr"),
+      target: targets ? { label: ft(targets.conversion.ctr, "ctr"), status: getTargetStatus(metrics.ctr ?? 0, targets.conversion.ctr) } : undefined });
+    kpis.push({ label: "CPC",         value: fm(metrics.cpc, "cpc"),
+      target: targets ? { label: ft(targets.conversion.cpc, "cpc"), status: getTargetStatus(metrics.cpc ?? 0, targets.conversion.cpc, false) } : undefined });
+    kpis.push({ label: "ROAS",        value: fm(metrics.roas, "roas"),
+      target: targets ? { label: ft(targets.conversion.roas, "roas"), status: getTargetStatus(metrics.roas ?? 0, targets.conversion.roas) } : undefined });
   }
 
   return (

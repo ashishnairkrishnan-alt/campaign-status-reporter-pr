@@ -31,25 +31,20 @@ function AdCard({ ad, currency, onClick }: AdCardProps) {
   const hasVideo = m.videoViews !== undefined;
   const fm       = (v: number | undefined, t: string) => formatMetric(v, t, currency);
 
-  const inlineMetrics = ad.objective === "awareness"
-    ? [
-        { label: "Reach", value: fm(m.reach, "reach") },
-        { label: "Freq",  value: fm(m.frequency, "frequency") },
-        { label: "CPM",   value: fm(m.cpm, "cpm") },
-      ]
-    : [
-        { label: "CTR",  value: fm(m.ctr, "ctr") },
-        { label: "CPC",  value: fm(m.cpc, "cpc") },
-        { label: "ROAS", value: fm(m.roas, "roas") },
-      ];
+  // Metrics shown on every card regardless of objective
+  const inlineMetrics = [
+    { label: "Impressions", value: fm(m.impressions, "impressions") },
+    { label: "Reach",       value: fm(m.reach,       "reach") },
+    { label: "CTR",         value: fm(m.ctr,         "ctr") },
+  ];
 
   return (
     <button
       onClick={onClick}
       className="group bg-white border border-border rounded-xl overflow-hidden hover:border-blue/40 hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 text-left w-full shadow-sm"
     >
-      {/* Thumbnail */}
-      <div className="aspect-video bg-surface relative">
+      {/* Thumbnail — 9:16 portrait to match Meta Reels/Stories format */}
+      <div className="bg-surface relative w-full" style={{ paddingTop: "177.78%" }}>
         {ad.thumbnailUrl ? (
           <Image src={ad.thumbnailUrl} alt={ad.adName} fill className="object-cover"
             sizes="(max-width: 768px) 100vw, 33vw" />
@@ -134,7 +129,7 @@ export function CreativeGallery({ ads, currency = "$" }: CreativeGalleryProps) {
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {dedupedAds.map((ad) => (
           <AdCard key={ad.id} ad={ad} currency={currency} onClick={() => setSelectedAd(ad)} />
         ))}
