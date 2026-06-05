@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { X, Sparkles, RefreshCw } from "lucide-react";
 import type { AdData } from "@/types";
+import type { DeduplicatedAd } from "@/lib/metrics";
 import { formatMetric } from "@/lib/metrics";
 import { getBadge } from "@/lib/badges";
 import { ChannelIcon } from "./ChannelIcon";
@@ -18,7 +19,7 @@ const lightBadgeStyles: Record<string, string> = {
 };
 
 interface AdDrawerProps {
-  ad: AdData | null;
+  ad: (AdData & Partial<DeduplicatedAd>) | null;
   currency?: string;
   onClose: () => void;
 }
@@ -98,7 +99,14 @@ export function AdDrawer({ ad, currency = "$", onClose }: AdDrawerProps) {
             </div>
             <h2 className="font-display text-base font-semibold text-ink leading-snug truncate">{ad.adName}</h2>
             <p className="text-xs text-muted mt-0.5 truncate">{ad.campaignName}</p>
-            <p className="text-xs text-subtle truncate">{ad.adsetName}</p>
+            {/* Show all ad sets this creative runs in */}
+            {ad.adsetNames && ad.adsetNames.length > 1 ? (
+              <p className="text-xs text-subtle">
+                Running in <span className="font-medium text-blue">{ad.adsetNames.length} ad sets</span>
+              </p>
+            ) : (
+              <p className="text-xs text-subtle truncate">{ad.adsetName}</p>
+            )}
           </div>
           <button onClick={onClose}
             className="p-1.5 rounded-lg text-subtle hover:text-ink hover:bg-surface transition-colors flex-shrink-0">

@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Play } from "lucide-react";
+import { Play, Layers } from "lucide-react";
 import type { AdData } from "@/types";
 import { formatMetric } from "@/lib/metrics";
+import { deduplicateByCreative, type DeduplicatedAd } from "@/lib/metrics";
 import { getBadge } from "@/lib/badges";
 import { ChannelIcon } from "./ChannelIcon";
 import { AdDrawer } from "./AdDrawer";
@@ -19,16 +20,16 @@ const lightBadgeStyles: Record<string, string> = {
 };
 
 interface AdCardProps {
-  ad: AdData;
+  ad: DeduplicatedAd;
   currency: string;
   onClick: () => void;
 }
 
 function AdCard({ ad, currency, onClick }: AdCardProps) {
-  const badge = getBadge(ad);
-  const m = ad.metrics;
+  const badge    = getBadge(ad);
+  const m        = ad.metrics;
   const hasVideo = m.videoViews !== undefined;
-  const fm = (v: number | undefined, t: string) => formatMetric(v, t, currency);
+  const fm       = (v: number | undefined, t: string) => formatMetric(v, t, currency);
 
   const inlineMetrics = ad.objective === "awareness"
     ? [
@@ -43,8 +44,11 @@ function AdCard({ ad, currency, onClick }: AdCardProps) {
       ];
 
   return (
-    <button onClick={onClick}
-      className="group bg-white border border-border rounded-xl overflow-hidden hover:border-blue/40 hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 text-left w-full shadow-sm">
+    <button
+      onClick={onClick}
+      className="group bg-white border border-border rounded-xl overflow-hidden hover:border-blue/40 hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 text-left w-full shadow-sm"
+    >
+      {/* Thumbnail */}
       <div className="aspect-video bg-surface relative">
         {ad.thumbnailUrl ? (
           <Image src={ad.thumbnailUrl} alt={ad.adName} fill className="object-cover"
@@ -65,17 +69,37 @@ function AdCard({ ad, currency, onClick }: AdCardProps) {
             )}
           </div>
         )}
+
+        {/* Channel badge — top right */}
         <div className="absolute top-2 right-2"><ChannelIcon channel={ad.channel} /></div>
-        <div className="absolute bottom-2 left-2">
+
+        {/* Status badge — bottom left */}
+        <div className="absolute bottom-2 left-2 flex items-center gap-1.5">
           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${lightBadgeStyles[badge.variant]}`}>
             {badge.label}
           </span>
+          {/* Ad set count badge */}
+          {ad.adsetCount > 1 && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-navy-800/80 text-white backdrop-blur-sm">
+              <Layers className="w-2.5 h-2.5" />
+              {ad.adsetCount} ad sets
+            </span>
+          )}
         </div>
       </div>
 
+      {/* Card body */}
       <div className="p-4">
-        <p className="text-sm font-medium text-ink truncate leading-snug mb-0.5">{ad.adName}</p>
-        <p className="text-[11px] text-subtle truncate">{ad.adsetName}</p>
+        {/* Ad name — truncated nicely */}
+        <p className="text-sm font-medium text-ink leading-snug mb-0.5 line-clamp-2" title={ad.adName}>
+          {ad.adName}
+        </p>
+        {/* Campaign name in smaller text */}
+        <p className="text-[11px] text-subtle truncate" title={ad.campaignName}>
+          {ad.campaignName}
+        </p>
+
+        {/* Inline metrics */}
         <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-border">
           {inlineMetrics.map((metric) => (
             <div key={metric.label} className="text-center">
@@ -95,9 +119,12 @@ interface CreativeGalleryProps {
 }
 
 export function CreativeGallery({ ads, currency = "$" }: CreativeGalleryProps) {
-  const [selectedAd, setSelectedAd] = useState<AdData | null>(null);
+  const [selectedAd, setSelectedAd] = useState<DeduplicatedAd | null>(null);
 
-  if (ads.length === 0) {
+  // Deduplicate — one card per unique creative, metrics aggregated across ad sets
+  const dedupedAds = deduplicateByCreative(ads);
+
+  if (dedupedAds.length === 0) {
     return (
       <div className="text-center py-16 text-subtle text-sm bg-white border border-border rounded-xl">
         No creatives found for the selected filters.
@@ -108,11 +135,15 @@ export function CreativeGallery({ ads, currency = "$" }: CreativeGalleryProps) {
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-        {ads.map((ad) => (
+        {dedupedAds.map((ad) => (
           <AdCard key={ad.id} ad={ad} currency={currency} onClick={() => setSelectedAd(ad)} />
         ))}
       </div>
-      <AdDrawer ad={selectedAd} currency={currency} onClose={() => setSelectedAd(null)} />
+      <AdDrawer
+        ad={selectedAd}
+        currency={currency}
+        onClose={() => setSelectedAd(null)}
+      />
     </>
   );
 }
