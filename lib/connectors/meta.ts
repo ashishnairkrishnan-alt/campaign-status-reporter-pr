@@ -26,6 +26,9 @@ const FIELDS = [
   "cpc",
   "video_views",
   "video_view_rate",
+  "video_3_sec_watched_actions",
+  "three_second_video_views",
+  "video_p25_watched_actions",
   "roas",
   "cost_per_result",
   "thumbnail_url",
@@ -46,6 +49,10 @@ interface WindsorRow {
   // Ad — Windsor returns one of these
   ad?: string;
   ad_name?: string;
+  // Video fields — Windsor uses different names depending on connector version
+  video_3_sec_watched_actions?: string | number;
+  three_second_video_views?: string | number;
+  video_p25_watched_actions?: string | number;
   // Metrics
   impressions?: string | number;
   reach?: string | number;
@@ -137,6 +144,13 @@ export async function fetchAds(
     const ex           = adMap.get(key);
 
     if (!ex) {
+      // Resolve video views — Meta 3-sec is the standard "video view"
+      const rawVideoViews =
+        n(row.video_3_sec_watched_actions) ||
+        n(row.three_second_video_views)    ||
+        n(row.video_views)                 ||
+        n(row.video_p25_watched_actions)   || 0;
+
       adMap.set(key, {
         row,
         metrics: {
@@ -148,7 +162,7 @@ export async function fetchAds(
           ctr:           n(row.ctr)             || undefined,
           cpm:           n(row.cpm)             || undefined,
           cpc:           n(row.cpc)             || undefined,
-          videoViews:    n(row.video_views)     || undefined,
+          videoViews:    rawVideoViews          || undefined,
           videoViewRate: n(row.video_view_rate) || undefined,
           roas:          n(row.roas)            || undefined,
           costPerResult: n(row.cost_per_result) || undefined,
@@ -158,7 +172,10 @@ export async function fetchAds(
       ex.metrics.impressions += n(row.impressions);
       ex.metrics.spend       += n(row.spend);
       if (ex.metrics.clicks     !== undefined) ex.metrics.clicks     += n(row.clicks);
-      if (ex.metrics.videoViews !== undefined) ex.metrics.videoViews  = (ex.metrics.videoViews ?? 0) + n(row.video_views);
+      if (ex.metrics.videoViews !== undefined) {
+        const rv = n(row.video_3_sec_watched_actions) || n(row.three_second_video_views) || n(row.video_views) || n(row.video_p25_watched_actions);
+        ex.metrics.videoViews = (ex.metrics.videoViews ?? 0) + rv;
+      }
       if (ex.metrics.reach      !== undefined) ex.metrics.reach       = Math.max(ex.metrics.reach, n(row.reach));
     }
   }
