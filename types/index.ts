@@ -75,15 +75,15 @@ export interface BadgeConfig {
 
 export interface TargetSet {
   awareness: {
+    impressions: number;
     reach: number;
-    frequency: number;
-    cpm: number;
-    vtr: number;
+    videoViews: number;
+    ctr: number;
   };
   conversion: {
+    impressions: number;
     ctr: number;
     cpc: number;
-    cpl: number;
     roas: number;
   };
 }

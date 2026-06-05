@@ -1,14 +1,14 @@
 {
   "chivas": {
-    "awareness": { "reach": 500000, "frequency": 3.0, "cpm": 20, "vtr": 0.30 },
-    "conversion": { "ctr": 0.02, "cpc": 5, "cpl": 80, "roas": 3.0 }
+    "awareness":  { "impressions": 1000000, "reach": 500000, "videoViews": 300000, "ctr": 0.01 },
+    "conversion": { "impressions": 500000,  "ctr": 0.02, "cpc": 5, "roas": 3.0 }
   },
   "absolut": {
-    "awareness": { "reach": 600000, "frequency": 2.8, "cpm": 18, "vtr": 0.32 },
-    "conversion": { "ctr": 0.025, "cpc": 4.5, "cpl": 70, "roas": 3.5 }
+    "awareness":  { "impressions": 1200000, "reach": 600000, "videoViews": 400000, "ctr": 0.012 },
+    "conversion": { "impressions": 600000,  "ctr": 0.025, "cpc": 4.5, "roas": 3.5 }
   },
   "jameson": {
-    "awareness": { "reach": 450000, "frequency": 3.2, "cpm": 22, "vtr": 0.28 },
-    "conversion": { "ctr": 0.022, "cpc": 4.8, "cpl": 75, "roas": 3.2 }
+    "awareness":  { "impressions": 900000,  "reach": 450000, "videoViews": 280000, "ctr": 0.009 },
+    "conversion": { "impressions": 450000,  "ctr": 0.022, "cpc": 4.8, "roas": 3.2 }
   }
 }

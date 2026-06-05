@@ -16,17 +16,17 @@ interface TargetField {
 }
 
 const AWARENESS_FIELDS: TargetField[] = [
-  { key: "reach",     label: "Target Reach",    placeholder: "500000" },
-  { key: "frequency", label: "Max Frequency",   placeholder: "3.0" },
-  { key: "cpm",       label: "Target CPM (£)",  placeholder: "20" },
-  { key: "vtr",       label: "Target VTR",      placeholder: "0.30" },
+  { key: "impressions", label: "Target Impressions", placeholder: "1000000" },
+  { key: "reach",       label: "Target Reach",       placeholder: "500000" },
+  { key: "videoViews",  label: "Target Video Views", placeholder: "300000" },
+  { key: "ctr",         label: "Target CTR",         placeholder: "0.01" },
 ];
 
 const CONVERSION_FIELDS: TargetField[] = [
-  { key: "ctr",  label: "Target CTR",        placeholder: "0.02" },
-  { key: "cpc",  label: "Target CPC (£)",    placeholder: "5" },
-  { key: "cpl",  label: "Target CPL (£)",    placeholder: "80" },
-  { key: "roas", label: "Target ROAS",       placeholder: "3.0" },
+  { key: "impressions", label: "Target Impressions", placeholder: "500000" },
+  { key: "ctr",         label: "Target CTR",         placeholder: "0.02" },
+  { key: "cpc",         label: "Target CPC ($)",     placeholder: "5" },
+  { key: "roas",        label: "Target ROAS",        placeholder: "3.0" },
 ];
 
 function labelToBrand(id: string) {
