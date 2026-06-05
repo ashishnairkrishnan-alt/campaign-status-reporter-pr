@@ -92,33 +92,26 @@ export function formatTarget(value: number, type: string, currency = "$"): strin
   return formatMetric(value, type, currency);
 }
 
-/**
- * Deduplicate ads by creative name — merge all ad set instances of the same
- * creative into one card, summing spend/clicks/videoViews and taking the
- * max reach. Returns each unique creative once, with an `adsetCount` added
- * to `adName` context (stored as `_adsetCount` on the object via cast).
- */
-export interface DeduplicatedAd extends import("@/types").AdData {
+// Deduplicate ads by creative name — one card per unique ad, metrics merged
+export interface DeduplicatedAd extends AdData {
   adsetCount: number;
   adsetNames: string[];
 }
 
-export function deduplicateByCreative(ads: import("@/types").AdData[]): DeduplicatedAd[] {
-  const map = new Map<string, { ads: import("@/types").AdData[] }>();
+export function deduplicateByCreative(ads: AdData[]): DeduplicatedAd[] {
+  const map = new Map<string, AdData[]>();
 
   for (const ad of ads) {
-    const key = ad.adName; // group by creative name
-    const ex  = map.get(key);
-    if (ex) ex.ads.push(ad);
-    else map.set(key, { ads: [ad] });
+    const existing = map.get(ad.adName) ?? [];
+    existing.push(ad);
+    map.set(ad.adName, existing);
   }
 
   const result: DeduplicatedAd[] = [];
 
-  for (const [, { ads: group }] of map) {
+  for (const [, group] of map) {
     const base   = group[0];
     const merged = aggregateMetrics(group);
-
     result.push({
       ...base,
       metrics:    merged,
@@ -127,6 +120,5 @@ export function deduplicateByCreative(ads: import("@/types").AdData[]): Deduplic
     });
   }
 
-  // Sort by spend descending
   return result.sort((a, b) => b.metrics.spend - a.metrics.spend);
 }

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { X, Sparkles, RefreshCw } from "lucide-react";
 import type { AdData } from "@/types";
-import type { DeduplicatedAd } from "@/lib/metrics";
 import { formatMetric } from "@/lib/metrics";
 import { getBadge } from "@/lib/badges";
 import { ChannelIcon } from "./ChannelIcon";
@@ -18,8 +17,9 @@ const lightBadgeStyles: Record<string, string> = {
   premium:           "bg-rose-50   text-rose-700   border border-rose-200",
 };
 
+// Extended ad type for drawer — includes optional adsetNames from deduplication
 interface AdDrawerProps {
-  ad: (AdData & Partial<DeduplicatedAd>) | null;
+  ad: (AdData & { adsetNames?: string[]; adsetCount?: number }) | null;
   currency?: string;
   onClose: () => void;
 }
