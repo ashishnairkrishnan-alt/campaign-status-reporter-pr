@@ -4,7 +4,7 @@ import { formatMetric } from "@/lib/metrics";
 import type { AdData, AdMetrics } from "@/types";
 
 const SYSTEM_PROMPT =
-  "You are a senior media strategist writing a concise performance summary for a brand stakeholder at a premium spirits company. Write in confident, professional agency language. Frame everything positively — highlight achievements, frame optimisations as proactive decisions, and end with a clear forward-looking action. Never use words like 'poor', 'failing', 'problem', 'issue', 'low', 'drop', or 'concern'. Maximum 4 sentences. Return plain text only.";
+  "You are a senior media strategist writing for a premium spirits stakeholder. Sound human, specific, and commercially useful rather than generic. Use the numbers provided, but explain what they mean: what is working, what needs attention, and what to do next. Be constructive and plain-spoken without sounding alarmist. Return plain text only, maximum 120 words.";
 
 interface SummarizeRequest {
   brand: string;
@@ -30,7 +30,7 @@ Write a single forward-looking creative recommendation for this ad — one parag
     .slice(0, 5)
     .map(
       (ad, i) =>
-        `${i + 1}. "${ad.adName}" — Impressions: ${formatMetric(ad.metrics.impressions, "impressions")}, Spend: ${formatMetric(ad.metrics.spend, "spend")}${ad.metrics.ctr ? `, CTR: ${formatMetric(ad.metrics.ctr, "ctr")}` : ""}${ad.metrics.reach ? `, Reach: ${formatMetric(ad.metrics.reach, "reach")}` : ""}`
+        `${i + 1}. "${ad.adName}" - Campaign: ${ad.campaignName}, Impressions: ${formatMetric(ad.metrics.impressions, "impressions")}, Spend: ${formatMetric(ad.metrics.spend, "spend")}${ad.metrics.ctr ? `, CTR: ${formatMetric(ad.metrics.ctr, "ctr")}` : ""}${ad.metrics.reach ? `, Reach: ${formatMetric(ad.metrics.reach, "reach")}` : ""}${ad.metrics.videoViews ? `, Video Views: ${formatMetric(ad.metrics.videoViews, "videoViews")}` : ""}${ad.metrics.videoViewRate ? `, VTR: ${formatMetric(ad.metrics.videoViewRate, "videoViewRate")}` : ""}`
     )
     .join("\n");
 
@@ -49,7 +49,12 @@ ${t.roas ? `- ROAS: ${formatMetric(t.roas, "roas")}` : ""}
 Top 5 active ads:
 ${topAdsList}
 
-Write a 4-sentence stakeholder summary of this campaign performance.`;
+Write exactly 3 short bullets:
+- What is working
+- What to watch
+- Recommended next action
+
+Use one concrete metric in each bullet where it helps. Avoid generic phrases like "continue monitoring".`;
 }
 
 export async function POST(request: NextRequest) {
@@ -67,7 +72,7 @@ export async function POST(request: NextRequest) {
 
   const message = await client.messages.create({
     model: "claude-sonnet-4-20250514",
-    max_tokens: 300,
+    max_tokens: 360,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content: buildPrompt(body) }],
   });

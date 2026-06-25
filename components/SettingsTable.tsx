@@ -11,7 +11,7 @@ export interface AccountRow {
   id: string;
   brandId: string;
   label: string;
-  accountId: string;
+  accountName: string;
   channel: Channel;
   objective: Objective;
   active: boolean;
@@ -43,7 +43,7 @@ export function SettingsTable({ initialRows }: SettingsTableProps) {
   function addRow() {
     setRows((prev) => [...prev, {
       id: `new-${Date.now()}`, brandId: "new-brand", label: "New Brand",
-      accountId: "", channel: "meta", objective: "awareness", active: true,
+      accountName: "", channel: "meta", objective: "awareness", active: true,
     }]);
   }
 
@@ -65,7 +65,7 @@ export function SettingsTable({ initialRows }: SettingsTableProps) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-surface">
-              {["Brand Name", "Account ID", "Channel", "Objective", "Active"].map((h) => (
+              {["Brand Name", "Account Name", "Channel", "Objective", "Active"].map((h) => (
                 <th key={h} className="text-left px-4 py-3 text-[10px] font-medium uppercase tracking-widest text-subtle">{h}</th>
               ))}
             </tr>
@@ -78,8 +78,8 @@ export function SettingsTable({ initialRows }: SettingsTableProps) {
                     className={inputClass} placeholder="Brand name" />
                 </td>
                 <td className="px-4 py-3">
-                  <input value={row.accountId} onChange={(e) => updateRow(row.id, { accountId: e.target.value })}
-                    className={`${inputClass} font-mono text-xs text-muted`} placeholder="ACT_XXXXXXXXX" />
+                  <input value={row.accountName} onChange={(e) => updateRow(row.id, { accountName: e.target.value })}
+                    className={`${inputClass} font-mono text-xs text-muted`} placeholder="ARE_Chivas_Internal" />
                 </td>
                 <td className="px-4 py-3">
                   <select value={row.channel} onChange={(e) => updateRow(row.id, { channel: e.target.value as Channel })} className={selectClass}>

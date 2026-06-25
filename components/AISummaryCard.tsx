@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Sparkles, Loader2 } from "lucide-react";
 import type { AdData, AdMetrics } from "@/types";
 
@@ -25,10 +25,33 @@ export function AISummaryCard({ brand, dateRange, totals, topAds }: AISummaryCar
   const [expanded, setExpanded] = useState(true);
   const [summary, setSummary]   = useState<string | null>(null);
   const [loading, setLoading]   = useState(false);
+  const summaryKey = useMemo(() => JSON.stringify({
+    totals: {
+      impressions: totals.impressions,
+      reach: totals.reach,
+      spend: totals.spend,
+      clicks: totals.clicks,
+      ctr: totals.ctr,
+      videoViews: totals.videoViews,
+      videoViewRate: totals.videoViewRate,
+      cpc: totals.cpc,
+      roas: totals.roas,
+    },
+    topAds: topAds.map((ad) => ({
+      id: ad.id,
+      campaignName: ad.campaignName,
+      adName: ad.adName,
+      impressions: ad.metrics.impressions,
+      spend: ad.metrics.spend,
+      ctr: ad.metrics.ctr,
+      videoViews: ad.metrics.videoViews,
+    })),
+  }), [totals, topAds]);
 
   // Auto-generate on mount — no button needed
   useEffect(() => {
     if (!brand || totals.impressions === 0) return;
+    setSummary(null);
     setLoading(true);
     fetch("/api/summarize", {
       method: "POST",
@@ -40,7 +63,7 @@ export function AISummaryCard({ brand, dateRange, totals, topAds }: AISummaryCar
       .catch(() => setSummary(null))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brand, dateRange.start, dateRange.end]);
+  }, [brand, dateRange.start, dateRange.end, summaryKey]);
 
   // Don't render if no API key configured
   if (!loading && summary === null && totals.impressions > 0) return null;
@@ -72,7 +95,7 @@ export function AISummaryCard({ brand, dateRange, totals, topAds }: AISummaryCar
           {loading ? (
             <SkeletonLines />
           ) : summary ? (
-            <p className="text-sm text-muted leading-relaxed mt-3">{summary}</p>
+            <p className="text-sm text-muted leading-relaxed mt-3 whitespace-pre-line">{summary}</p>
           ) : null}
         </div>
       )}

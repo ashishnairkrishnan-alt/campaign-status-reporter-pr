@@ -10,6 +10,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const from         = searchParams.get("from") ?? "/admin/settings";
 
+  const [email, setEmail]       = useState("test@test.com");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw]     = useState(false);
   const [error, setError]       = useState("");
@@ -23,13 +24,13 @@ function LoginForm() {
       const res = await fetch("/api/admin/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ email, password }),
       });
       if (res.ok) {
         router.push(from);
         router.refresh();
       } else {
-        setError("Incorrect password. Please try again.");
+        setError("Incorrect email or password. Please try again.");
       }
     } catch {
       setError("Connection error. Please try again.");
@@ -62,6 +63,18 @@ function LoginForm() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
+              <label className="block text-xs font-medium text-subtle mb-1.5">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="test@test.com"
+                required autoFocus
+                className="w-full border border-border rounded-lg px-3 py-2.5 text-sm text-ink focus:border-blue focus:outline-none transition-colors"
+              />
+            </div>
+
+            <div>
               <label className="block text-xs font-medium text-subtle mb-1.5">Password</label>
               <div className="relative">
                 <input
@@ -69,7 +82,7 @@ function LoginForm() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter admin password"
-                  required autoFocus
+                  required
                   className="w-full border border-border rounded-lg px-3 py-2.5 pr-10 text-sm text-ink focus:border-blue focus:outline-none transition-colors"
                 />
                 <button type="button" onClick={() => setShowPw((v) => !v)}
@@ -85,7 +98,7 @@ function LoginForm() {
               </p>
             )}
 
-            <button type="submit" disabled={loading || !password}
+            <button type="submit" disabled={loading || !email || !password}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold text-white transition-all disabled:opacity-50"
               style={{ backgroundColor: "#002957" }}>
               {loading

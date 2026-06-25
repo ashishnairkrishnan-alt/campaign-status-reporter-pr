@@ -3,17 +3,17 @@
 // ─── Admin Settings — /admin/settings ────────────────────────────────────────
 // Share this URL only with your team. Stakeholders never see it.
 // Settings here are saved to your browser's localStorage.
-// Account IDs and permanent changes must be committed to /config/brands.ts.
+// Windsor account names and permanent changes must be committed to /config/brands.ts.
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { ArrowLeft, Lock, Save, CheckCircle, Info, LogOut } from "lucide-react";
+import { ArrowLeft, Lock, Save, CheckCircle, Info, LogOut, Copy, ExternalLink } from "lucide-react";
 import { TargetsTable } from "@/components/TargetsTable";
 import { brands, LAST_UPDATED } from "@/config/brands";
 import targetsJson from "@/config/targets.json";
-import type { Targets } from "@/types";
+import type { DateRangePreset, Targets } from "@/types";
 
 const targets = targetsJson as Targets;
 
@@ -99,9 +99,9 @@ function BrandSettingsCard({ brand }: { brand: typeof brands[number] }) {
         <div className="flex items-center gap-2 p-3 rounded-lg bg-surface border border-border">
           <Info className="w-3.5 h-3.5 text-subtle flex-shrink-0" />
           <p className="text-xs text-subtle">
-            Account ID for this brand:{" "}
+            Windsor account name for this brand:{" "}
             <code className="bg-white px-1.5 py-0.5 rounded border border-border font-mono text-ink">
-              {brand.accounts[0]?.accountId ?? "—"}
+              {brand.accounts[0]?.accountName ?? "—"}
             </code>
             {" "}— to change, edit <code className="text-navy-500">/config/brands.ts</code> and redeploy.
           </p>
@@ -127,20 +127,32 @@ function BrandSettingsCard({ brand }: { brand: typeof brands[number] }) {
 
 // ─── Dashboard view pre-selection per brand ──────────────────────────────────
 interface ViewFilter {
+  title: string;
+  slug: string;
   campaign: string;
   adset: string;
-  dateFrom: string;
-  dateTo: string;
+  dateRange: DateRangePreset;
 }
 
-const EMPTY_FILTER: ViewFilter = { campaign: "", adset: "", dateFrom: "", dateTo: "" };
+const EMPTY_FILTER: ViewFilter = { title: "", slug: "", campaign: "", adset: "", dateRange: "30d" };
 const VIEW_KEY = (brandId: string) => `dashboard_view_${brandId}`;
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+}
 
 function DashboardViewCard({
   brandId, brandLabel, brandColor,
 }: { brandId: string; brandLabel: string; brandColor: string }) {
   const [filter, setFilter] = useState<ViewFilter>(EMPTY_FILTER);
   const [saved, setSaved]   = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [origin, setOrigin] = useState("");
   const [campaigns, setCampaigns] = useState<string[]>([]);
   const [adsets, setAdsets]       = useState<string[]>([]);
   const [loading, setLoading]     = useState(false);
@@ -148,9 +160,13 @@ function DashboardViewCard({
   useEffect(() => {
     try {
       const raw = localStorage.getItem(VIEW_KEY(brandId));
-      if (raw) setFilter(JSON.parse(raw));
+      if (raw) setFilter({ ...EMPTY_FILTER, ...JSON.parse(raw) });
     } catch {}
   }, [brandId]);
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
 
   async function loadCampaigns() {
     setLoading(true);
@@ -178,7 +194,11 @@ function DashboardViewCard({
   }, [filter.campaign]);
 
   function save() {
-    localStorage.setItem(VIEW_KEY(brandId), JSON.stringify(filter));
+    const title = filter.title.trim() || filter.campaign || `${brandLabel} report`;
+    const slug = slugify(filter.slug || title || brandId) || brandId;
+    const next = { ...filter, title, slug };
+    setFilter(next);
+    localStorage.setItem(VIEW_KEY(brandId), JSON.stringify(next));
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   }
@@ -189,6 +209,24 @@ function DashboardViewCard({
   }
 
   const inputClass = "w-full bg-white border border-border rounded-lg px-3 py-2 text-sm text-ink focus:border-blue outline-none transition-colors";
+  const reportTitle = filter.title.trim() || filter.campaign || `${brandLabel} report`;
+  const reportSlug = slugify(filter.slug || reportTitle || brandId) || brandId;
+  const linkParams = new URLSearchParams();
+  if (filter.campaign) linkParams.set("campaign", filter.campaign);
+  if (filter.adset) linkParams.set("adset", filter.adset);
+  if (filter.dateRange !== "30d") linkParams.set("dateRange", filter.dateRange);
+  if (reportTitle) linkParams.set("title", reportTitle);
+  const reportPath = `/dashboard/${brandId}/report/${reportSlug}`;
+  const reportHref = `${reportPath}${linkParams.toString() ? `?${linkParams.toString()}` : ""}`;
+  const fullReportUrl = origin ? `${origin}${reportHref}` : reportHref;
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(fullReportUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {}
+  }
 
   return (
     <div className="bg-white border border-border rounded-xl p-5 shadow-sm">
@@ -205,16 +243,29 @@ function DashboardViewCard({
 
       <div className="space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-subtle mb-1.5">Report name shown to viewers</label>
+            <input value={filter.title} onChange={(e) => setFilter((f) => ({ ...f, title: e.target.value, slug: f.slug || slugify(e.target.value) }))}
+              placeholder={`${brandLabel} campaign report`} className={inputClass} />
+          </div>
+          <div>
+            <label className="block text-xs text-subtle mb-1.5">Share link folder</label>
+            <input value={filter.slug} onChange={(e) => setFilter((f) => ({ ...f, slug: slugify(e.target.value) }))}
+              placeholder={reportSlug} className={`${inputClass} font-mono`} />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {/* Campaign */}
           <div>
             <label className="block text-xs text-subtle mb-1.5">Campaign (leave blank = show all)</label>
             {campaigns.length > 0 ? (
-              <select value={filter.campaign} onChange={(e) => setFilter((f) => ({ ...f, campaign: e.target.value, adset: "" }))} className={inputClass}>
+              <select value={filter.campaign} onChange={(e) => setFilter((f) => ({ ...f, campaign: e.target.value, adset: "", title: f.title || e.target.value, slug: f.slug || slugify(e.target.value) }))} className={inputClass}>
                 <option value="">All campaigns</option>
                 {campaigns.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             ) : (
-              <input value={filter.campaign} onChange={(e) => setFilter((f) => ({ ...f, campaign: e.target.value, adset: "" }))}
+              <input value={filter.campaign} onChange={(e) => setFilter((f) => ({ ...f, campaign: e.target.value, adset: "", title: f.title || e.target.value, slug: f.slug || slugify(e.target.value) }))}
                 placeholder="Paste campaign name or load from Windsor ↑" className={inputClass} />
             )}
           </div>
@@ -234,15 +285,26 @@ function DashboardViewCard({
           </div>
         </div>
 
-        {/* Date range */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs text-subtle mb-1.5">Date from</label>
-            <input type="date" value={filter.dateFrom} onChange={(e) => setFilter((f) => ({ ...f, dateFrom: e.target.value }))} className={inputClass} />
-          </div>
-          <div>
-            <label className="block text-xs text-subtle mb-1.5">Date to</label>
-            <input type="date" value={filter.dateTo} onChange={(e) => setFilter((f) => ({ ...f, dateTo: e.target.value }))} className={inputClass} />
+        <div>
+          <label className="block text-xs text-subtle mb-1.5">Date range</label>
+          <select value={filter.dateRange} onChange={(e) => setFilter((f) => ({ ...f, dateRange: e.target.value as DateRangePreset }))} className={inputClass}>
+            <option value="7d">Last 7 days</option>
+            <option value="14d">Last 14 days</option>
+            <option value="30d">Last 30 days</option>
+          </select>
+        </div>
+
+        <div className="rounded-lg border border-border bg-surface p-3">
+          <label className="block text-xs text-subtle mb-1.5">Share link</label>
+          <div className="flex items-center gap-2">
+            <input readOnly value={fullReportUrl} className={`${inputClass} font-mono text-xs bg-white`} />
+            <button type="button" onClick={copyLink} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border border-border bg-white text-muted hover:text-ink transition-colors">
+              <Copy className="w-3.5 h-3.5" />{copied ? "Copied" : "Copy"}
+            </button>
+            <a href={reportHref} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white transition-colors"
+              style={{ backgroundColor: brandColor }}>
+              <ExternalLink className="w-3.5 h-3.5" />Open
+            </a>
           </div>
         </div>
 
@@ -378,15 +440,15 @@ export default function AdminSettingsPage() {
           <div className="space-y-2 text-sm text-muted">
             <p>✅ <strong>Campaign title, currency, Last Updated</strong> — saved in your browser. Changes show immediately when you refresh the dashboard.</p>
             <p>✅ <strong>KPI Targets</strong> — saved below, persist in your browser.</p>
-            <p>⚙️ <strong>Account IDs</strong> — must be set in <code className="bg-surface px-1 py-0.5 rounded text-xs text-navy-500">/config/brands.ts</code> and redeployed. Ask your developer or edit the file directly on GitHub.</p>
+            <p>⚙️ <strong>Windsor account names</strong> — must be set in <code className="bg-surface px-1 py-0.5 rounded text-xs text-navy-500">/config/brands.ts</code> and redeployed. Ask your developer or edit the file directly on GitHub.</p>
           </div>
         </div>
 
-        {/* Dashboard view — pre-select campaign/adset/dates for stakeholders */}
+        {/* Dashboard view — build shareable campaign report links for stakeholders */}
         <section>
           <div className="mb-4">
             <h2 className="font-display text-lg font-semibold text-ink mb-1">Dashboard View</h2>
-            <p className="text-sm text-muted">Pre-select which campaign, ad set and date range stakeholders see by default. They can still change filters themselves.</p>
+            <p className="text-sm text-muted">Create a named report link for each campaign, ad set and date range. The report name and filters are stored in the URL so it can be shared with different people.</p>
           </div>
           <div className="space-y-4">
             {brands.map((brand) => (

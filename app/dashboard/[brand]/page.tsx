@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { RefreshCw, Clock } from "lucide-react";
 import Image from "next/image";
@@ -19,6 +19,29 @@ import targetsJson from "@/config/targets.json";
 import { aggregateMetrics } from "@/lib/metrics";
 
 const targets = targetsJson as Targets;
+const ALL_FILTER = "__all__";
+const DATE_RANGE_PRESETS: DateRangePreset[] = ["7d", "14d", "30d"];
+
+function isDateRangePreset(value: string | null): value is DateRangePreset {
+  return value !== null && DATE_RANGE_PRESETS.includes(value as DateRangePreset);
+}
+
+function readFilterFromParams(params: { get(name: string): string | null }): FilterState {
+  return {
+    campaign: params.get("campaign") || DEFAULT_FILTER.campaign,
+    adset:    params.get("adset")    || DEFAULT_FILTER.adset,
+    ad:       params.get("ad")       || DEFAULT_FILTER.ad,
+  };
+}
+
+function readDateRangeFromParams(params: { get(name: string): string | null }): DateRangePreset {
+  const value = params.get("dateRange");
+  return isDateRangePreset(value) ? value : "30d";
+}
+
+function readReportTitleFromParams(params: { get(name: string): string | null }): string {
+  return params.get("title")?.trim() ?? "";
+}
 
 // Read admin display settings from localStorage
 function useAdminSettings(brandId: string, defaults: { campaignLabel: string; currency: string; lastUpdated: string }) {
@@ -86,11 +109,58 @@ async function fetchDashboard(brand: string, dateRange: DateRangePreset): Promis
 
 export default function DashboardPage() {
   const params = useParams();
+  const pathname = usePathname();
+  const router = useRouter();
+  const [queryString, setQueryString] = useState("");
   const brandId = (params?.brand as string) ?? "chivas";
   const brand = getBrand(brandId);
 
-  const [dateRange, setDateRange] = useState<DateRangePreset>("30d");
-  const [filter, setFilter] = useState<FilterState>(DEFAULT_FILTER);
+  const [dateRange, setDateRangeState] = useState<DateRangePreset>("30d");
+  const [filter, setFilterState] = useState<FilterState>(DEFAULT_FILTER);
+  const [reportTitle, setReportTitle] = useState("");
+
+  useEffect(() => {
+    const syncFromLocation = () => setQueryString(window.location.search.replace(/^\?/, ""));
+    syncFromLocation();
+    window.addEventListener("popstate", syncFromLocation);
+    return () => window.removeEventListener("popstate", syncFromLocation);
+  }, [brandId]);
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(queryString);
+    setDateRangeState(readDateRangeFromParams(urlParams));
+    setFilterState(readFilterFromParams(urlParams));
+    setReportTitle(readReportTitleFromParams(urlParams));
+  }, [brandId, queryString]);
+
+  function updateUrl(nextDateRange: DateRangePreset, nextFilter: FilterState) {
+    const nextParams = new URLSearchParams(queryString);
+
+    if (nextDateRange === "30d") nextParams.delete("dateRange");
+    else nextParams.set("dateRange", nextDateRange);
+
+    (["campaign", "adset", "ad"] as const).forEach((key) => {
+      if (!nextFilter[key] || nextFilter[key] === ALL_FILTER) nextParams.delete(key);
+      else nextParams.set(key, nextFilter[key]);
+    });
+
+    if (reportTitle) nextParams.set("title", reportTitle);
+
+    const nextQuery = nextParams.toString();
+    setQueryString(nextQuery);
+    router.replace(`${pathname}${nextQuery ? `?${nextQuery}` : ""}`, { scroll: false });
+  }
+
+  function handleDateRangeChange(nextDateRange: DateRangePreset) {
+    setDateRangeState(nextDateRange);
+    setFilterState(DEFAULT_FILTER);
+    updateUrl(nextDateRange, DEFAULT_FILTER);
+  }
+
+  function handleFilterChange(nextFilter: FilterState) {
+    setFilterState(nextFilter);
+    updateUrl(dateRange, nextFilter);
+  }
 
   const adminSettings  = useAdminSettings(brandId, {
     campaignLabel: brand?.campaignLabel ?? "",
@@ -120,6 +190,9 @@ export default function DashboardPage() {
 
   const filteredAds    = applyFilter(baseAds, filter);
   const filteredTotals = aggregateMetrics(filteredAds);
+  const summaryTopAds  = [...filteredAds]
+    .sort((a, b) => b.metrics.spend - a.metrics.spend)
+    .slice(0, 5);
 
   const dominantObjective = (() => {
     if (!filteredAds.length) return "awareness" as const;
@@ -196,7 +269,7 @@ export default function DashboardPage() {
               {brandLabel}
             </span>
 
-            <DateRangePicker value={dateRange} onChange={(v) => { setDateRange(v); setFilter(DEFAULT_FILTER); }} />
+            <DateRangePicker value={dateRange} onChange={handleDateRangeChange} />
 
             <button onClick={() => refetch()} disabled={isFetching}
               className="p-2 rounded-lg border text-white/60 hover:text-white transition-all disabled:opacity-40"
@@ -230,7 +303,7 @@ export default function DashboardPage() {
         {/* Filter bar */}
         {data && (
           <div className="px-6 py-4 border-b" style={{ backgroundColor: "#ffffff", borderColor: "#dde4ee" }}>
-            <CampaignFilter ads={data.allAds} filter={filter} onChange={setFilter} />
+            <CampaignFilter ads={data.allAds} filter={filter} onChange={handleFilterChange} />
           </div>
         )}
 
@@ -241,7 +314,7 @@ export default function DashboardPage() {
           {brand && (
             <CampaignBanner
               brandId={brandId}
-              defaultLabel={adminSettings.campaignLabel || brand.campaignLabel}
+              defaultLabel={reportTitle || adminSettings.campaignLabel || brand.campaignLabel}
               brandColor={brandColor}
               isAdmin={false}   // stakeholder view — no edit button
             />
@@ -253,7 +326,7 @@ export default function DashboardPage() {
               brand={brandLabel}
               dateRange={data.dateRange}
               totals={filteredTotals}
-              topAds={filteredAds.slice(0, 5)}
+              topAds={summaryTopAds}
             />
           )}
 

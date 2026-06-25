@@ -87,6 +87,45 @@ function n(v: string | number | undefined): number {
   return isNaN(p) ? 0 : p;
 }
 
+function rate(v: string | number | undefined): number {
+  const value = n(v);
+  if (!value) return 0;
+  return value > 1 ? value / 100 : value;
+}
+
+function getVideoViews(r: WindsorRow): number {
+  return (
+    n(r.video_3_sec_watched_actions) ||
+    n(r.three_second_video_views) ||
+    n(r.video_views) ||
+    n(r.video_p25_watched_actions) ||
+    0
+  );
+}
+
+function getReach(r: WindsorRow): number {
+  const directReach = n(r.reach);
+  if (directReach) return directReach;
+
+  const impressions = n(r.impressions);
+  const frequency = n(r.frequency);
+  return impressions > 0 && frequency > 0 ? impressions / frequency : 0;
+}
+
+function getClicks(r: WindsorRow): number {
+  const directClicks = n(r.clicks);
+  if (directClicks) return directClicks;
+
+  const impressions = n(r.impressions);
+  const ctr = rate(r.ctr);
+  return impressions > 0 && ctr > 0 ? impressions * ctr : 0;
+}
+
+function addMetric(metrics: AdMetrics, key: "clicks" | "videoViews" | "reach", value: number) {
+  if (value <= 0) return;
+  metrics[key] = ((metrics[key] as number | undefined) ?? 0) + value;
+}
+
 function widenPreset(_preset: string): string {
   return "last_180d"; // always fetch wide window — data may be months old
 }
@@ -145,25 +184,19 @@ export async function fetchAds(
 
     if (!ex) {
       // Resolve video views — Meta 3-sec is the standard "video view"
-      const rawVideoViews =
-        n(row.video_3_sec_watched_actions) ||
-        n(row.three_second_video_views)    ||
-        n(row.video_views)                 ||
-        n(row.video_p25_watched_actions)   || 0;
-
       adMap.set(key, {
         row,
         metrics: {
           impressions:   n(row.impressions),
-          reach:         n(row.reach)           || undefined,
+          reach:         getReach(row)          || undefined,
           frequency:     n(row.frequency)       || undefined,
           spend:         n(row.spend),
-          clicks:        n(row.clicks)          || undefined,
-          ctr:           n(row.ctr)             || undefined,
+          clicks:        getClicks(row)         || undefined,
+          ctr:           rate(row.ctr)          || undefined,
           cpm:           n(row.cpm)             || undefined,
           cpc:           n(row.cpc)             || undefined,
-          videoViews:    rawVideoViews          || undefined,
-          videoViewRate: n(row.video_view_rate) || undefined,
+          videoViews:    getVideoViews(row)     || undefined,
+          videoViewRate: rate(row.video_view_rate) || undefined,
           roas:          n(row.roas)            || undefined,
           costPerResult: n(row.cost_per_result) || undefined,
         },
@@ -171,12 +204,9 @@ export async function fetchAds(
     } else {
       ex.metrics.impressions += n(row.impressions);
       ex.metrics.spend       += n(row.spend);
-      if (ex.metrics.clicks     !== undefined) ex.metrics.clicks     += n(row.clicks);
-      if (ex.metrics.videoViews !== undefined) {
-        const rv = n(row.video_3_sec_watched_actions) || n(row.three_second_video_views) || n(row.video_views) || n(row.video_p25_watched_actions);
-        ex.metrics.videoViews = (ex.metrics.videoViews ?? 0) + rv;
-      }
-      if (ex.metrics.reach      !== undefined) ex.metrics.reach       = Math.max(ex.metrics.reach, n(row.reach));
+      addMetric(ex.metrics, "clicks", getClicks(row));
+      addMetric(ex.metrics, "videoViews", getVideoViews(row));
+      addMetric(ex.metrics, "reach", getReach(row));
     }
   }
 
@@ -185,11 +215,11 @@ export async function fetchAds(
 
   for (const [, { row, metrics }] of adMap) {
     if (metrics.impressions > 0) {
-      if (metrics.clicks)     metrics.ctr          = metrics.clicks / metrics.impressions;
-      if (metrics.spend > 0)  metrics.cpm          = (metrics.spend / metrics.impressions) * 1000;
-      if (metrics.clicks)     metrics.cpc          = metrics.spend / metrics.clicks;
-      if (metrics.reach)      metrics.frequency    = metrics.impressions / metrics.reach;
-      if (metrics.videoViews) metrics.videoViewRate = metrics.videoViews / metrics.impressions;
+      if ((metrics.clicks ?? 0) > 0)     metrics.ctr          = (metrics.clicks ?? 0) / metrics.impressions;
+      if (metrics.spend > 0)             metrics.cpm          = (metrics.spend / metrics.impressions) * 1000;
+      if ((metrics.clicks ?? 0) > 0)     metrics.cpc          = metrics.spend / (metrics.clicks ?? 1);
+      if ((metrics.reach ?? 0) > 0)      metrics.frequency    = metrics.impressions / (metrics.reach ?? 1);
+      if ((metrics.videoViews ?? 0) > 0) metrics.videoViewRate = (metrics.videoViews ?? 0) / metrics.impressions;
     }
 
     const campaignName = getCampaign(row) || "Unknown Campaign";
