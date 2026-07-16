@@ -17,13 +17,18 @@ function getDateRange(preset: string): { start: string; end: string } {
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const brandId   = searchParams.get("brand")     ?? "chivas";
+  const brandId    = searchParams.get("brand")     ?? "chivas";
   const datePreset = searchParams.get("dateRange") ?? "30d";
+  const dateFrom   = searchParams.get("dateFrom");
+  const dateTo     = searchParams.get("dateTo");
 
   const brand = brands.find((b) => b.id === brandId);
   if (!brand) return NextResponse.json({ error: "Brand not found" }, { status: 404 });
 
-  const dateRange = getDateRange(datePreset);
+  // Prefer explicit date range (set by admin in settings) over preset
+  const dateRange = (dateFrom && dateTo)
+    ? { start: dateFrom, end: dateTo }
+    : getDateRange(datePreset);
   const apiKey    = process.env.WINDSOR_API_KEY ?? "";
 
   const activeAccounts = brand.accounts.filter((a) => a.active);

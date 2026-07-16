@@ -166,28 +166,17 @@ function maxMetric(metrics: AdMetrics, key: "reach", value: number) {
   metrics[key] = Math.max((metrics[key] as number | undefined) ?? 0, value);
 }
 
-function buildDatePreset(dateRange: { start: string; end: string }): string {
-  const days = Math.round(
-    (new Date(dateRange.end).getTime() - new Date(dateRange.start).getTime()) / 86400000
-  );
-  if (days <= 7)  return "last_7d";
-  if (days <= 14) return "last_14d";
-  if (days <= 30) return "last_30d";
-  return "last_180d";
-}
-
 export async function fetchAds(
   accountName: string,
   dateRange: { start: string; end: string },
   apiKey: string,
   facebookAccountId?: string
 ): Promise<AdData[]> {
-  const preset = buildDatePreset(dateRange);
-
   const url = new URL(WINDSOR_BASE);
-  url.searchParams.set("api_key",     apiKey);
-  url.searchParams.set("date_preset", preset);
-  url.searchParams.set("fields",      FIELDS);
+  url.searchParams.set("api_key",    apiKey);
+  url.searchParams.set("date_from",  dateRange.start);
+  url.searchParams.set("date_to",    dateRange.end);
+  url.searchParams.set("fields",     FIELDS);
   if (facebookAccountId) {
     url.searchParams.set("select_accounts", `facebook__${facebookAccountId}`);
   }
@@ -294,12 +283,11 @@ export async function fetchCampaignTotals(
   apiKey: string,
   facebookAccountId?: string
 ): Promise<AdMetrics> {
-  const preset = buildDatePreset(dateRange);
-
   const url = new URL(WINDSOR_BASE);
-  url.searchParams.set("api_key",     apiKey);
-  url.searchParams.set("date_preset", preset);
-  url.searchParams.set("fields",      CAMPAIGN_FIELDS);
+  url.searchParams.set("api_key",   apiKey);
+  url.searchParams.set("date_from", dateRange.start);
+  url.searchParams.set("date_to",   dateRange.end);
+  url.searchParams.set("fields",    CAMPAIGN_FIELDS);
   if (facebookAccountId) {
     url.searchParams.set("select_accounts", `facebook__${facebookAccountId}`);
   }

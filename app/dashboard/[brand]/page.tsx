@@ -39,6 +39,13 @@ function readDateRangeFromParams(params: { get(name: string): string | null }): 
   return isDateRangePreset(value) ? value : "30d";
 }
 
+function readCustomDatesFromParams(params: { get(name: string): string | null }): { dateFrom?: string; dateTo?: string } {
+  const dateFrom = params.get("dateFrom");
+  const dateTo   = params.get("dateTo");
+  if (dateFrom && dateTo) return { dateFrom, dateTo };
+  return {};
+}
+
 function readReportTitleFromParams(params: { get(name: string): string | null }): string {
   return params.get("title")?.trim() ?? "";
 }
@@ -59,13 +66,14 @@ function useAdminSettings(brandId: string, defaults: { campaignLabel: string; cu
 
 // Read admin pre-selected campaign/adset/date filter
 function useAdminViewFilter(brandId: string) {
-  const [viewFilter, setViewFilter] = useState<{ campaign: string; adset: string; dateFrom: string; dateTo: string } | null>(null);
+  type ViewFilter = { campaign: string; adset: string; dateRange?: string; dateFrom: string; dateTo: string };
+  const [viewFilter, setViewFilter] = useState<ViewFilter | null>(null);
   useEffect(() => {
     try {
       const raw = localStorage.getItem(`dashboard_view_${brandId}`);
       if (raw) {
         const f = JSON.parse(raw);
-        if (f.campaign || f.adset || f.dateFrom) setViewFilter(f);
+        if (f.campaign || f.adset || f.dateFrom || f.dateRange === "custom") setViewFilter(f);
       }
     } catch {}
   }, [brandId]);
@@ -101,8 +109,19 @@ function SkeletonGallery() {
   );
 }
 
-async function fetchDashboard(brand: string, dateRange: DateRangePreset): Promise<DashboardData> {
-  const res = await fetch(`/api/windsor?brand=${brand}&dateRange=${dateRange}`);
+async function fetchDashboard(
+  brand: string,
+  dateRange: DateRangePreset,
+  dateFrom?: string,
+  dateTo?: string,
+): Promise<DashboardData> {
+  let url = `/api/windsor?brand=${brand}`;
+  if (dateFrom && dateTo) {
+    url += `&dateFrom=${dateFrom}&dateTo=${dateTo}`;
+  } else {
+    url += `&dateRange=${dateRange}`;
+  }
+  const res = await fetch(url);
   if (!res.ok) throw new Error("Failed to fetch");
   return res.json();
 }
@@ -118,6 +137,7 @@ export default function DashboardPage() {
   const [dateRange, setDateRangeState] = useState<DateRangePreset>("30d");
   const [filter, setFilterState] = useState<FilterState>(DEFAULT_FILTER);
   const [reportTitle, setReportTitle] = useState("");
+  const [urlDates, setUrlDates] = useState<{ dateFrom?: string; dateTo?: string }>({});
 
   useEffect(() => {
     const syncFromLocation = () => setQueryString(window.location.search.replace(/^\?/, ""));
@@ -131,6 +151,7 @@ export default function DashboardPage() {
     setDateRangeState(readDateRangeFromParams(urlParams));
     setFilterState(readFilterFromParams(urlParams));
     setReportTitle(readReportTitleFromParams(urlParams));
+    setUrlDates(readCustomDatesFromParams(urlParams));
   }, [brandId, queryString]);
 
   function updateUrl(nextDateRange: DateRangePreset, nextFilter: FilterState) {
@@ -169,9 +190,15 @@ export default function DashboardPage() {
   });
   const adminViewFilter = useAdminViewFilter(brandId);
 
+  // URL params (from shareable link) take priority, then admin settings
+  const customDateFrom = urlDates.dateFrom
+    ?? (adminViewFilter?.dateRange === "custom" ? adminViewFilter?.dateFrom : undefined);
+  const customDateTo   = urlDates.dateTo
+    ?? (adminViewFilter?.dateRange === "custom" ? adminViewFilter?.dateTo   : undefined);
+
   const { data, isLoading, refetch, isFetching } = useQuery({
-    queryKey: ["dashboard", brandId, dateRange],
-    queryFn: () => fetchDashboard(brandId, dateRange),
+    queryKey: ["dashboard", brandId, customDateFrom ?? dateRange, customDateTo ?? ""],
+    queryFn:  () => fetchDashboard(brandId, dateRange, customDateFrom, customDateTo),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -190,6 +217,17 @@ export default function DashboardPage() {
 
   const filteredAds    = applyFilter(baseAds, filter);
   const filteredTotals = aggregateMetrics(filteredAds);
+
+  // Use campaign-level totals (accurate deduplicated reach/impressions) when no
+  // filter is active. Fall back to filteredTotals when user drills into a subset.
+  const hasUserFilter  = filter.campaign !== DEFAULT_FILTER.campaign ||
+                         filter.adset    !== DEFAULT_FILTER.adset    ||
+                         filter.ad       !== DEFAULT_FILTER.ad;
+  const hasAdminFilter = !!adminViewFilter?.campaign?.trim() || !!adminViewFilter?.adset?.trim();
+  const kpiMetrics     = (!hasUserFilter && !hasAdminFilter && data?.aggregateTotals)
+    ? data.aggregateTotals
+    : filteredTotals;
+
   const summaryTopAds  = [...filteredAds]
     .sort((a, b) => b.metrics.spend - a.metrics.spend)
     .slice(0, 5);
@@ -325,7 +363,7 @@ export default function DashboardPage() {
             <AISummaryCard
               brand={brandLabel}
               dateRange={data.dateRange}
-              totals={filteredTotals}
+              totals={kpiMetrics}
               topAds={summaryTopAds}
             />
           )}
@@ -344,7 +382,7 @@ export default function DashboardPage() {
             </h2>
             {isLoading ? <SkeletonKPI /> : data ? (
               <KPIStrip
-                metrics={filteredTotals}
+                metrics={kpiMetrics}
                 objective={dominantObjective}
                 channel={dominantChannel}
                 brandColor={brandColor}

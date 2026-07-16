@@ -131,10 +131,12 @@ interface ViewFilter {
   slug: string;
   campaign: string;
   adset: string;
-  dateRange: DateRangePreset;
+  dateRange: DateRangePreset | "custom";
+  dateFrom: string;  // YYYY-MM-DD, used when dateRange === "custom"
+  dateTo: string;    // YYYY-MM-DD, used when dateRange === "custom"
 }
 
-const EMPTY_FILTER: ViewFilter = { title: "", slug: "", campaign: "", adset: "", dateRange: "30d" };
+const EMPTY_FILTER: ViewFilter = { title: "", slug: "", campaign: "", adset: "", dateRange: "30d", dateFrom: "", dateTo: "" };
 const VIEW_KEY = (brandId: string) => `dashboard_view_${brandId}`;
 
 function slugify(value: string): string {
@@ -214,7 +216,12 @@ function DashboardViewCard({
   const linkParams = new URLSearchParams();
   if (filter.campaign) linkParams.set("campaign", filter.campaign);
   if (filter.adset) linkParams.set("adset", filter.adset);
-  if (filter.dateRange !== "30d") linkParams.set("dateRange", filter.dateRange);
+  if (filter.dateRange === "custom" && filter.dateFrom && filter.dateTo) {
+    linkParams.set("dateFrom", filter.dateFrom);
+    linkParams.set("dateTo",   filter.dateTo);
+  } else if (filter.dateRange !== "30d") {
+    linkParams.set("dateRange", filter.dateRange);
+  }
   if (reportTitle) linkParams.set("title", reportTitle);
   const reportPath = `/dashboard/${brandId}/report/${reportSlug}`;
   const reportHref = `${reportPath}${linkParams.toString() ? `?${linkParams.toString()}` : ""}`;
@@ -287,12 +294,30 @@ function DashboardViewCard({
 
         <div>
           <label className="block text-xs text-subtle mb-1.5">Date range</label>
-          <select value={filter.dateRange} onChange={(e) => setFilter((f) => ({ ...f, dateRange: e.target.value as DateRangePreset }))} className={inputClass}>
+          <select value={filter.dateRange} onChange={(e) => setFilter((f) => ({ ...f, dateRange: e.target.value as ViewFilter["dateRange"] }))} className={inputClass}>
             <option value="7d">Last 7 days</option>
             <option value="14d">Last 14 days</option>
             <option value="30d">Last 30 days</option>
+            <option value="custom">Custom campaign range</option>
           </select>
         </div>
+
+        {filter.dateRange === "custom" && (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-subtle mb-1.5">Campaign start date</label>
+              <input type="date" value={filter.dateFrom}
+                onChange={(e) => setFilter((f) => ({ ...f, dateFrom: e.target.value }))}
+                className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-xs text-subtle mb-1.5">Campaign end date</label>
+              <input type="date" value={filter.dateTo}
+                onChange={(e) => setFilter((f) => ({ ...f, dateTo: e.target.value }))}
+                className={inputClass} />
+            </div>
+          </div>
+        )}
 
         <div className="rounded-lg border border-border bg-surface p-3">
           <label className="block text-xs text-subtle mb-1.5">Share link</label>
