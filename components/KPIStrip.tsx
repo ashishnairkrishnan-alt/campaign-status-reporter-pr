@@ -56,7 +56,7 @@ export function KPIStrip({ metrics, objective, channel, brandColor, targets, cur
       target: targets ? { label: ft(targets.awareness.impressions, "impressions"), status: getTargetStatus(metrics.impressions, targets.awareness.impressions) } : undefined });
     kpis.push({ label: "Unique Reach", value: fm(metrics.reach, "reach"),
       target: targets ? { label: ft(targets.awareness.reach, "reach"), status: getTargetStatus(metrics.reach ?? 0, targets.awareness.reach) } : undefined });
-    kpis.push({ label: "Video Views", value: fm(metrics.videoViews, "videoViews"),
+    if (metrics.videoViews) kpis.push({ label: "Video Views", value: fm(metrics.videoViews, "videoViews"),
       target: targets ? { label: ft(targets.awareness.videoViews, "videoViews"), status: getTargetStatus(metrics.videoViews ?? 0, targets.awareness.videoViews) } : undefined });
     kpis.push({ label: "CTR", value: fm(metrics.ctr, "ctr"),
       target: targets ? { label: ft(targets.awareness.ctr, "ctr"), status: getTargetStatus(metrics.ctr ?? 0, targets.awareness.ctr) } : undefined });
@@ -74,8 +74,9 @@ export function KPIStrip({ metrics, objective, channel, brandColor, targets, cur
   // Spend always shown last
   kpis.push({ label: "Spend", value: fm(metrics.spend, "spend") });
 
+  const cols = kpis.length <= 4 ? "lg:grid-cols-4" : "lg:grid-cols-5";
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+    <div className={`grid grid-cols-2 ${cols} gap-4`}>
       {kpis.map((kpi) => <KPITile key={kpi.label} {...kpi} accent={brandColor} />)}
     </div>
   );

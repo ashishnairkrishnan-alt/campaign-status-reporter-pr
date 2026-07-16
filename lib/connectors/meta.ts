@@ -201,6 +201,9 @@ export async function fetchAds(
   const adMap = new Map<string, { row: WindsorRow; metrics: AdMetrics }>();
 
   for (const row of rows) {
+    // Skip rows where Windsor returns null impressions — bad/unsynced data
+    if (!row.impressions && !row.spend) continue;
+
     const campaignName = getCampaign(row);
     const adsetName    = getAdset(row);
     const adName       = getAd(row);
@@ -303,6 +306,7 @@ export async function fetchCampaignTotals(
   // Aggregate daily campaign rows into totals
   const totals: AdMetrics = { impressions: 0, spend: 0 };
   for (const row of rows) {
+    if (!row.impressions && !row.spend) continue; // skip null-metric rows
     const imp = n(row.impressions);
     totals.impressions += imp;
     totals.spend       += n(row.spend);
