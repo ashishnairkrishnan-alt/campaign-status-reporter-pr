@@ -125,9 +125,14 @@ function getClicks(r: WindsorRow): number {
   return impressions > 0 && ctr > 0 ? impressions * ctr : 0;
 }
 
-function addMetric(metrics: AdMetrics, key: "clicks" | "videoViews" | "reach", value: number) {
+function addMetric(metrics: AdMetrics, key: "clicks" | "videoViews", value: number) {
   if (value <= 0) return;
   metrics[key] = ((metrics[key] as number | undefined) ?? 0) + value;
+}
+
+function maxMetric(metrics: AdMetrics, key: "reach", value: number) {
+  if (value <= 0) return;
+  metrics[key] = Math.max((metrics[key] as number | undefined) ?? 0, value);
 }
 
 function buildDatePreset(dateRange: { start: string; end: string }): string {
@@ -207,7 +212,7 @@ export async function fetchAds(
       ex.metrics.spend       += n(row.spend);
       addMetric(ex.metrics, "clicks",     getClicks(row));
       addMetric(ex.metrics, "videoViews", getVideoViews(row, imp));
-      addMetric(ex.metrics, "reach",      getReach(row));
+      maxMetric(ex.metrics, "reach",      getReach(row));
     }
   }
 

@@ -12,7 +12,7 @@ export function aggregateMetrics(ads: AdData[]): AdMetrics {
     totals.spend += m.spend;
     if (m.clicks)     totals.clicks     = (totals.clicks     ?? 0) + m.clicks;
     if (m.videoViews) totals.videoViews = (totals.videoViews ?? 0) + m.videoViews;
-    if (m.reach)      totals.reach      = (totals.reach      ?? 0) + m.reach;
+    if (m.reach)      totals.reach      = Math.max(totals.reach ?? 0, m.reach);
   }
 
   if (totals.impressions > 0) {
