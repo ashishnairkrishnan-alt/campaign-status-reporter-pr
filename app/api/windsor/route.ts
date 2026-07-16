@@ -34,10 +34,10 @@ export async function GET(request: NextRequest) {
     if (!apiKey) return [[], []];
     return Promise.all([
       Promise.allSettled(
-        activeAccounts.map((a) => fetchAdsByChannel(a.channel, a.accountName, dateRange, apiKey))
+        activeAccounts.map((a) => fetchAdsByChannel(a.channel, a.accountName, dateRange, apiKey, a.facebookAccountId))
       ),
       Promise.allSettled(
-        activeAccounts.map((a) => fetchCampaignTotalsByChannel(a.channel, a.accountName, dateRange, apiKey))
+        activeAccounts.map((a) => fetchCampaignTotalsByChannel(a.channel, a.accountName, dateRange, apiKey, a.facebookAccountId))
       ),
     ]);
   })();

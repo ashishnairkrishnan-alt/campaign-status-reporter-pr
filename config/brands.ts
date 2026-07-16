@@ -4,7 +4,8 @@ export type Objective = "awareness" | "conversion";
 export interface BrandAccount {
   id: string;
   label: string;
-  accountName: string;   // Must match the "Account Name" in Windsor.ai exactly
+  accountName: string;       // Windsor account_name (used as fallback filter)
+  facebookAccountId?: string; // Facebook Ads account ID — used for select_accounts in Windsor
   channel: Channel;
   color: string;
   active: boolean;
@@ -34,7 +35,8 @@ export const brands: Brand[] = [
       {
         id: "chivas-meta",
         label: "Chivas Meta",
-        accountName: "ARE_Chivas_Internal",   // ← Windsor account_name
+        accountName: "ARE_Chivas_Internal",
+        facebookAccountId: "687576933271645",
         channel: "meta",
         color: "#C9A84C",
         active: true,
@@ -52,7 +54,8 @@ export const brands: Brand[] = [
       {
         id: "absolut-meta",
         label: "Absolut Meta",
-        accountName: "ARE_Absolut_Internal",  // ← Windsor account_name
+        accountName: "ARE_Absolut_Internal",
+        facebookAccountId: "1743636846079996", // ← confirm this is the correct Absolut ID
         channel: "meta",
         color: "#1A5276",
         active: true,
@@ -70,7 +73,8 @@ export const brands: Brand[] = [
       {
         id: "jameson-meta",
         label: "Jameson Meta",
-        accountName: "ARE_Jameson_Internal",  // ← update if different in Windsor
+        accountName: "ARE_Jameson_Internal",
+        facebookAccountId: "2278150955878672", // ← confirm this is the correct Jameson ID
         channel: "meta",
         color: "#2E7D32",
         active: true,

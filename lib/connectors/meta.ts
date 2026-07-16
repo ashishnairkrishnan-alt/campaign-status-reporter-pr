@@ -16,6 +16,8 @@ const CAMPAIGN_FIELDS = [
   "clicks",
   "ctr",
   "cpm",
+  "actions_video_view",
+  "video_play_actions_video_view",
   "video_views",
   "video_3_sec_watched_actions",
   "three_second_video_views",
@@ -44,6 +46,10 @@ const FIELDS = [
   "ctr",
   "cpm",
   "cpc",
+  // Windsor-correct video field names (confirmed working)
+  "actions_video_view",
+  "video_play_actions_video_view",
+  // Legacy/fallback video field names
   "video_views",
   "video_view_rate",
   "video_3_sec_watched_actions",
@@ -69,7 +75,10 @@ interface WindsorRow {
   // Ad — Windsor returns one of these
   ad?: string;
   ad_name?: string;
-  // Video fields — Windsor uses different names depending on connector version
+  // Video fields — Windsor correct names confirmed via API
+  actions_video_view?: string | number;
+  video_play_actions_video_view?: string | number;
+  // Legacy/fallback video field names
   video_3_sec_watched_actions?: string | number;
   three_second_video_views?: string | number;
   video_p25_watched_actions?: string | number;
@@ -114,15 +123,18 @@ function rate(v: string | number | undefined): number {
 }
 
 function getVideoViews(r: WindsorRow, impressions: number): number {
-  // Try direct fields first (Windsor Meta connector uses different names depending on version)
+  // Windsor-correct field names (confirmed via API)
   const direct =
-    n(r.video_3_sec_watched_actions) ||
-    n(r.three_second_video_views)    ||
-    n(r.video_views)                 ||
+    n(r.actions_video_view)              ||
+    n(r.video_play_actions_video_view)   ||
+    // Legacy fallbacks
+    n(r.video_3_sec_watched_actions)     ||
+    n(r.three_second_video_views)        ||
+    n(r.video_views)                     ||
     n(r.video_p25_watched_actions);
   if (direct > 0) return direct;
 
-  // Fallback: derive 3-sec views from video_view_rate × impressions
+  // Last resort: derive from video_view_rate × impressions
   const vvr = rate(r.video_view_rate);
   return vvr > 0 && impressions > 0 ? Math.round(vvr * impressions) : 0;
 }
@@ -168,15 +180,18 @@ function buildDatePreset(dateRange: { start: string; end: string }): string {
 export async function fetchAds(
   accountName: string,
   dateRange: { start: string; end: string },
-  apiKey: string
+  apiKey: string,
+  facebookAccountId?: string
 ): Promise<AdData[]> {
   const preset = buildDatePreset(dateRange);
 
   const url = new URL(WINDSOR_BASE);
-  url.searchParams.set("api_key",      apiKey);
-  url.searchParams.set("date_preset",  preset);
-  url.searchParams.set("fields",       FIELDS);
-  // Do NOT add account_id — Windsor doesn't filter by it
+  url.searchParams.set("api_key",     apiKey);
+  url.searchParams.set("date_preset", preset);
+  url.searchParams.set("fields",      FIELDS);
+  if (facebookAccountId) {
+    url.searchParams.set("select_accounts", `facebook__${facebookAccountId}`);
+  }
 
   const res = await fetch(url.toString(), { next: { revalidate: 300 } });
   if (!res.ok) throw new Error(`Windsor ${res.status}: ${res.statusText}`);
@@ -277,7 +292,8 @@ export async function fetchAds(
 export async function fetchCampaignTotals(
   accountName: string,
   dateRange: { start: string; end: string },
-  apiKey: string
+  apiKey: string,
+  facebookAccountId?: string
 ): Promise<AdMetrics> {
   const preset = buildDatePreset(dateRange);
 
@@ -285,6 +301,9 @@ export async function fetchCampaignTotals(
   url.searchParams.set("api_key",     apiKey);
   url.searchParams.set("date_preset", preset);
   url.searchParams.set("fields",      CAMPAIGN_FIELDS);
+  if (facebookAccountId) {
+    url.searchParams.set("select_accounts", `facebook__${facebookAccountId}`);
+  }
 
   const res = await fetch(url.toString(), { next: { revalidate: 300 } });
   if (!res.ok) return { impressions: 0, spend: 0 };

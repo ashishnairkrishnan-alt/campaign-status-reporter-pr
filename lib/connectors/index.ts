@@ -7,9 +7,10 @@ export async function fetchCampaignTotalsByChannel(
   channel: Channel,
   accountIdentifier: string,
   dateRange: { start: string; end: string },
-  apiKey: string
+  apiKey: string,
+  facebookAccountId?: string
 ): Promise<AdMetrics> {
-  if (channel === "meta") return fetchMetaCampaignTotals(accountIdentifier, dateRange, apiKey);
+  if (channel === "meta") return fetchMetaCampaignTotals(accountIdentifier, dateRange, apiKey, facebookAccountId);
   return { impressions: 0, spend: 0 };
 }
 
@@ -18,10 +19,11 @@ export async function fetchAdsByChannel(
   channel: Channel,
   accountIdentifier: string,
   dateRange: { start: string; end: string },
-  apiKey: string
+  apiKey: string,
+  facebookAccountId?: string
 ): Promise<AdData[]> {
   switch (channel) {
-    case "meta":   return fetchMetaAds(accountIdentifier, dateRange, apiKey);
+    case "meta":   return fetchMetaAds(accountIdentifier, dateRange, apiKey, facebookAccountId);
     case "google": return fetchGoogleAds(accountIdentifier, dateRange, apiKey);
     case "tiktok": return fetchTikTokAds(accountIdentifier, dateRange, apiKey);
     default:       return [];
