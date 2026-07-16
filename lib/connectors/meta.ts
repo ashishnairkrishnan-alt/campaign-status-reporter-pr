@@ -126,10 +126,6 @@ function addMetric(metrics: AdMetrics, key: "clicks" | "videoViews" | "reach", v
   metrics[key] = ((metrics[key] as number | undefined) ?? 0) + value;
 }
 
-function widenPreset(_preset: string): string {
-  return "last_180d"; // always fetch wide window — data may be months old
-}
-
 function buildDatePreset(dateRange: { start: string; end: string }): string {
   const days = Math.round(
     (new Date(dateRange.end).getTime() - new Date(dateRange.start).getTime()) / 86400000
@@ -145,7 +141,7 @@ export async function fetchAds(
   dateRange: { start: string; end: string },
   apiKey: string
 ): Promise<AdData[]> {
-  const preset = widenPreset(buildDatePreset(dateRange));
+  const preset = buildDatePreset(dateRange);
 
   const url = new URL(WINDSOR_BASE);
   url.searchParams.set("api_key",      apiKey);
@@ -183,30 +179,29 @@ export async function fetchAds(
     const ex           = adMap.get(key);
 
     if (!ex) {
-      // Resolve video views — Meta 3-sec is the standard "video view"
       adMap.set(key, {
         row,
         metrics: {
           impressions:   n(row.impressions),
-          reach:         getReach(row)          || undefined,
-          frequency:     n(row.frequency)       || undefined,
+          reach:         getReach(row)             || undefined,
+          frequency:     n(row.frequency)          || undefined,
           spend:         n(row.spend),
-          clicks:        getClicks(row)         || undefined,
-          ctr:           rate(row.ctr)          || undefined,
-          cpm:           n(row.cpm)             || undefined,
-          cpc:           n(row.cpc)             || undefined,
-          videoViews:    getVideoViews(row)     || undefined,
+          clicks:        getClicks(row)            || undefined,
+          ctr:           rate(row.ctr)             || undefined,
+          cpm:           n(row.cpm)                || undefined,
+          cpc:           n(row.cpc)                || undefined,
+          videoViews:    getVideoViews(row)        || undefined,
           videoViewRate: rate(row.video_view_rate) || undefined,
-          roas:          n(row.roas)            || undefined,
-          costPerResult: n(row.cost_per_result) || undefined,
+          roas:          n(row.roas)               || undefined,
+          costPerResult: n(row.cost_per_result)    || undefined,
         },
       });
     } else {
       ex.metrics.impressions += n(row.impressions);
       ex.metrics.spend       += n(row.spend);
-      addMetric(ex.metrics, "clicks", getClicks(row));
+      addMetric(ex.metrics, "clicks",     getClicks(row));
       addMetric(ex.metrics, "videoViews", getVideoViews(row));
-      addMetric(ex.metrics, "reach", getReach(row));
+      addMetric(ex.metrics, "reach",      getReach(row));
     }
   }
 
@@ -229,8 +224,8 @@ export async function fetchAds(
     ads.push({
       id:           `meta-${accountName}-${idx++}`,
       campaignName,
-      adsetName:    adsetName || campaignName,   // fall back to campaign if adset empty
-      adName:       adName    || campaignName,   // fall back to campaign if ad name empty
+      adsetName:    adsetName || campaignName,
+      adName:       adName    || campaignName,
       channel:      "meta",
       objective:    detectObjective(campaignName),
       metrics,

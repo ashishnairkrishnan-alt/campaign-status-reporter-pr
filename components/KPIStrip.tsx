@@ -54,7 +54,7 @@ export function KPIStrip({ metrics, objective, channel, brandColor, targets, cur
   if (objective === "awareness") {
     kpis.push({ label: "Impressions", value: fm(metrics.impressions, "impressions"),
       target: targets ? { label: ft(targets.awareness.impressions, "impressions"), status: getTargetStatus(metrics.impressions, targets.awareness.impressions) } : undefined });
-    kpis.push({ label: "Reach", value: fm(metrics.reach, "reach"),
+    kpis.push({ label: "Unique Reach", value: fm(metrics.reach, "reach"),
       target: targets ? { label: ft(targets.awareness.reach, "reach"), status: getTargetStatus(metrics.reach ?? 0, targets.awareness.reach) } : undefined });
     kpis.push({ label: "Video Views", value: fm(metrics.videoViews, "videoViews"),
       target: targets ? { label: ft(targets.awareness.videoViews, "videoViews"), status: getTargetStatus(metrics.videoViews ?? 0, targets.awareness.videoViews) } : undefined });

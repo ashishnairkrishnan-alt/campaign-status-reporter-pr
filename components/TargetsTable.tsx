@@ -17,7 +17,7 @@ interface TargetField {
 
 const AWARENESS_FIELDS: TargetField[] = [
   { key: "impressions", label: "Target Impressions", placeholder: "1000000" },
-  { key: "reach",       label: "Target Reach",       placeholder: "500000" },
+  { key: "reach",       label: "Target Unique Reach", placeholder: "500000" },
   { key: "videoViews",  label: "Target Video Views", placeholder: "300000" },
   { key: "ctr",         label: "Target CTR",         placeholder: "0.01" },
 ];
