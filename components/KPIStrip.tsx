@@ -71,8 +71,11 @@ export function KPIStrip({ metrics, objective, channel, brandColor, targets, cur
       target: targets ? { label: ft(targets.conversion.roas, "roas"), status: getTargetStatus(metrics.roas ?? 0, targets.conversion.roas) } : undefined });
   }
 
+  // Spend always shown last
+  kpis.push({ label: "Spend", value: fm(metrics.spend, "spend") });
+
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
       {kpis.map((kpi) => <KPITile key={kpi.label} {...kpi} accent={brandColor} />)}
     </div>
   );

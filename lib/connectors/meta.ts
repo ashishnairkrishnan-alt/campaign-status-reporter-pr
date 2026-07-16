@@ -3,7 +3,27 @@ import { detectObjective } from "@/config/brands";
 
 const WINDSOR_BASE = "https://connectors.windsor.ai/all";
 
-// Request all possible field name variants — Windsor varies by connector version
+// Campaign-level fields — no adset/ad breakdown so Windsor returns deduplicated campaign metrics
+const CAMPAIGN_FIELDS = [
+  "date",
+  "account_name",
+  "campaign",
+  "campaign_name",
+  "impressions",
+  "reach",
+  "frequency",
+  "spend",
+  "clicks",
+  "ctr",
+  "cpm",
+  "video_views",
+  "video_3_sec_watched_actions",
+  "three_second_video_views",
+  "video_p25_watched_actions",
+  "video_view_rate",
+].join(",");
+
+// Ad-level fields — full breakdown for creative gallery
 const FIELDS = [
   "date",
   "datasource",
@@ -247,4 +267,57 @@ export async function fetchAds(
   }
 
   return ads;
+}
+
+// Fetch campaign-level totals — no adset/ad breakdown, so reach/impressions are
+// deduplicated at the campaign level (matches what Meta Ads Manager shows).
+export async function fetchCampaignTotals(
+  accountName: string,
+  dateRange: { start: string; end: string },
+  apiKey: string
+): Promise<AdMetrics> {
+  const preset = buildDatePreset(dateRange);
+
+  const url = new URL(WINDSOR_BASE);
+  url.searchParams.set("api_key",     apiKey);
+  url.searchParams.set("date_preset", preset);
+  url.searchParams.set("fields",      CAMPAIGN_FIELDS);
+
+  const res = await fetch(url.toString(), { next: { revalidate: 300 } });
+  if (!res.ok) return { impressions: 0, spend: 0 };
+
+  const json = await res.json();
+  const allRows: WindsorRow[] = Array.isArray(json)
+    ? json
+    : json.data ?? json.rows ?? [];
+
+  const rows = allRows.filter((r) => {
+    if (accountName && (r.account_name ?? "").toLowerCase() !== accountName.toLowerCase()) return false;
+    if (r.date && r.date < dateRange.start) return false;
+    if (r.date && r.date > dateRange.end)   return false;
+    return true;
+  });
+
+  if (rows.length === 0) return { impressions: 0, spend: 0 };
+
+  // Aggregate daily campaign rows into totals
+  const totals: AdMetrics = { impressions: 0, spend: 0 };
+  for (const row of rows) {
+    const imp = n(row.impressions);
+    totals.impressions += imp;
+    totals.spend       += n(row.spend);
+    addMetric(totals, "clicks",     getClicks(row));
+    addMetric(totals, "videoViews", getVideoViews(row, imp));
+    maxMetric(totals, "reach",      getReach(row));
+  }
+
+  if (totals.impressions > 0) {
+    if ((totals.clicks ?? 0) > 0)     totals.ctr          = (totals.clicks ?? 0) / totals.impressions;
+    if (totals.spend > 0)             totals.cpm          = (totals.spend / totals.impressions) * 1000;
+    if ((totals.videoViews ?? 0) > 0) totals.videoViewRate = (totals.videoViews ?? 0) / totals.impressions;
+  }
+  if ((totals.clicks ?? 0) > 0)  totals.cpc       = totals.spend / (totals.clicks ?? 1);
+  if ((totals.reach ?? 0) > 0)   totals.frequency = totals.impressions / (totals.reach ?? 1);
+
+  return totals;
 }
