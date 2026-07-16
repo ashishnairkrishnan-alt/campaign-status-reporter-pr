@@ -93,14 +93,18 @@ function rate(v: string | number | undefined): number {
   return value > 1 ? value / 100 : value;
 }
 
-function getVideoViews(r: WindsorRow): number {
-  return (
+function getVideoViews(r: WindsorRow, impressions: number): number {
+  // Try direct fields first (Windsor Meta connector uses different names depending on version)
+  const direct =
     n(r.video_3_sec_watched_actions) ||
-    n(r.three_second_video_views) ||
-    n(r.video_views) ||
-    n(r.video_p25_watched_actions) ||
-    0
-  );
+    n(r.three_second_video_views)    ||
+    n(r.video_views)                 ||
+    n(r.video_p25_watched_actions);
+  if (direct > 0) return direct;
+
+  // Fallback: derive 3-sec views from video_view_rate × impressions
+  const vvr = rate(r.video_view_rate);
+  return vvr > 0 && impressions > 0 ? Math.round(vvr * impressions) : 0;
 }
 
 function getReach(r: WindsorRow): number {
@@ -179,28 +183,30 @@ export async function fetchAds(
     const ex           = adMap.get(key);
 
     if (!ex) {
+      const imp = n(row.impressions);
       adMap.set(key, {
         row,
         metrics: {
-          impressions:   n(row.impressions),
-          reach:         getReach(row)             || undefined,
-          frequency:     n(row.frequency)          || undefined,
+          impressions:   imp,
+          reach:         getReach(row)              || undefined,
+          frequency:     n(row.frequency)           || undefined,
           spend:         n(row.spend),
-          clicks:        getClicks(row)            || undefined,
-          ctr:           rate(row.ctr)             || undefined,
-          cpm:           n(row.cpm)                || undefined,
-          cpc:           n(row.cpc)                || undefined,
-          videoViews:    getVideoViews(row)        || undefined,
-          videoViewRate: rate(row.video_view_rate) || undefined,
-          roas:          n(row.roas)               || undefined,
-          costPerResult: n(row.cost_per_result)    || undefined,
+          clicks:        getClicks(row)             || undefined,
+          ctr:           rate(row.ctr)              || undefined,
+          cpm:           n(row.cpm)                 || undefined,
+          cpc:           n(row.cpc)                 || undefined,
+          videoViews:    getVideoViews(row, imp)    || undefined,
+          videoViewRate: rate(row.video_view_rate)  || undefined,
+          roas:          n(row.roas)                || undefined,
+          costPerResult: n(row.cost_per_result)     || undefined,
         },
       });
     } else {
-      ex.metrics.impressions += n(row.impressions);
+      const imp = n(row.impressions);
+      ex.metrics.impressions += imp;
       ex.metrics.spend       += n(row.spend);
       addMetric(ex.metrics, "clicks",     getClicks(row));
-      addMetric(ex.metrics, "videoViews", getVideoViews(row));
+      addMetric(ex.metrics, "videoViews", getVideoViews(row, imp));
       addMetric(ex.metrics, "reach",      getReach(row));
     }
   }
