@@ -3,9 +3,10 @@ import { detectObjective } from "@/config/brands";
 
 const WINDSOR_BASE = "https://connectors.windsor.ai/all";
 
-// Campaign-level fields — no adset/ad breakdown so Windsor returns deduplicated campaign metrics
+// Campaign-level fields — no date and no adset/ad breakdown.
+// Omitting "date" makes Windsor return one aggregated row per campaign for the
+// entire date_preset period, giving us deduplicated reach and correct totals.
 const CAMPAIGN_FIELDS = [
-  "date",
   "account_name",
   "campaign",
   "campaign_name",
@@ -20,8 +21,6 @@ const CAMPAIGN_FIELDS = [
   "video_play_actions_video_view",
   "video_views",
   "video_3_sec_watched_actions",
-  "three_second_video_views",
-  "video_p25_watched_actions",
   "video_view_rate",
 ].join(",");
 
@@ -313,25 +312,26 @@ export async function fetchCampaignTotals(
     ? json
     : json.data ?? json.rows ?? [];
 
-  const rows = allRows.filter((r) => {
-    if (accountName && (r.account_name ?? "").toLowerCase() !== accountName.toLowerCase()) return false;
-    if (r.date && r.date < dateRange.start) return false;
-    if (r.date && r.date > dateRange.end)   return false;
-    return true;
-  });
+  // No date field in CAMPAIGN_FIELDS — Windsor returns one aggregated row per campaign
+  // for the full date_preset period. Filter only by account (select_accounts handles
+  // this already, but keep account_name as a safety net).
+  const rows = allRows.filter((r) =>
+    !accountName || (r.account_name ?? "").toLowerCase() === accountName.toLowerCase()
+  );
 
   if (rows.length === 0) return { impressions: 0, spend: 0 };
 
-  // Aggregate daily campaign rows into totals
+  // Sum all campaign rows — each row is one campaign's total for the period
   const totals: AdMetrics = { impressions: 0, spend: 0 };
   for (const row of rows) {
-    if (!row.impressions && !row.spend) continue; // skip null-metric rows
+    if (!row.impressions && !row.spend) continue;
     const imp = n(row.impressions);
     totals.impressions += imp;
     totals.spend       += n(row.spend);
     addMetric(totals, "clicks",     getClicks(row));
     addMetric(totals, "videoViews", getVideoViews(row, imp));
-    maxMetric(totals, "reach",      getReach(row));
+    // reach is already deduplicated at campaign level — sum across campaigns
+    addMetric(totals, "reach",      getReach(row));
   }
 
   if (totals.impressions > 0) {
